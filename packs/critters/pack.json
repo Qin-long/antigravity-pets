@@ -1,0 +1,239 @@
+{
+  "schema": 1,
+  "id": "critters",
+  "name": "像素小伙伴",
+  "version": "1.0.0",
+  "author": "Antigravity Pets contributors",
+  "license": "CC0-1.0",
+  "description": "项目原创的默认皮肤包：7 只像素小伙伴，带真·闪光配色。由 tools/build-critters-pack.mjs 生成。",
+  "defaultStyle": "pixel",
+  "styles": {
+    "pixel": {
+      "label": "像素",
+      "gif": "gif/{id}.gif",
+      "frames": "frames/{id}",
+      "shinyGif": "gif-shiny/{id}.gif",
+      "shinyFrames": "frames-shiny/{id}",
+      "pixelated": true
+    }
+  },
+  "artwork": "art/{id}.png",
+  "creatures": [
+    {
+      "id": "sprout",
+      "name": "芽芽",
+      "dexNo": 1,
+      "rarity": "N",
+      "weight": 26,
+      "scale": 0.86,
+      "color": "#5FBF5A",
+      "cheer": "🌱 芽芽冒头啦！",
+      "spark": "🌱",
+      "match": {
+        "keywords": [
+          "sprite",
+          "art",
+          "asset"
+        ]
+      },
+      "shiny": {
+        "palette": {
+          "#F4E9C8": "#EAF1FF",
+          "#D9C38F": "#B7C6E6",
+          "#FFFBEA": "#FFFFFF",
+          "#5FBF5A": "#E8A33D",
+          "#3E8E45": "#B5701F"
+        },
+        "tolerance": 6,
+        "hue": 175,
+        "saturation": 1.5,
+        "lightness": 1.1
+      }
+    },
+    {
+      "id": "mochi",
+      "name": "团子",
+      "dexNo": 2,
+      "rarity": "N",
+      "weight": 24,
+      "scale": 0.86,
+      "color": "#FF7FA8",
+      "cheer": "🍡 软软团子，弹弹弹！",
+      "spark": "🌸",
+      "match": {
+        "keywords": [
+          "scout",
+          "research"
+        ]
+      },
+      "shiny": {
+        "palette": {
+          "#FFE6EE": "#E2F7EC",
+          "#F2B6C8": "#A6DCC0",
+          "#FF7FA8": "#7FB6FF",
+          "#D94F7E": "#4F7FD9",
+          "#FF9DB8": "#9FE0C4"
+        },
+        "tolerance": 6,
+        "hue": 168,
+        "saturation": 0.57,
+        "lightness": 0.98
+      }
+    },
+    {
+      "id": "cog",
+      "name": "齿轮",
+      "dexNo": 3,
+      "rarity": "R",
+      "weight": 16,
+      "scale": 0.9,
+      "color": "#5EF2FF",
+      "cheer": "📡 信号满格，全员集合！",
+      "spark": "⚙",
+      "match": {
+        "coordinator": true
+      },
+      "shiny": {
+        "palette": {
+          "#9DBBDD": "#E8C35A",
+          "#5F84AD": "#B08E2E",
+          "#D6E6F7": "#FFF0B8",
+          "#5EF2FF": "#FF7AE0",
+          "#2BB5C9": "#C946AA"
+        },
+        "tolerance": 6,
+        "hue": -168,
+        "saturation": 1.56,
+        "lightness": 0.85
+      }
+    },
+    {
+      "id": "inky",
+      "name": "墨墨",
+      "dexNo": 4,
+      "rarity": "R",
+      "weight": 14,
+      "scale": 0.92,
+      "color": "#8E6BD8",
+      "cheer": "🎨 墨墨给你换个配色！",
+      "spark": "🎨",
+      "match": {
+        "keywords": [
+          "theme",
+          "css",
+          "ui",
+          "refactor"
+        ]
+      },
+      "shiny": {
+        "palette": {
+          "#9677E0": "#46AEDD",
+          "#6347A8": "#2774A0",
+          "#C9B8F5": "#A8E2FA",
+          "#49D3C6": "#FF9F43",
+          "#2A9E93": "#D9741A"
+        },
+        "tolerance": 6,
+        "hue": -59,
+        "saturation": 1.1,
+        "lightness": 0.85
+      }
+    },
+    {
+      "id": "lumo",
+      "name": "灯灯",
+      "dexNo": 5,
+      "rarity": "SR",
+      "weight": 9,
+      "scale": 0.92,
+      "color": "#FFE066",
+      "cheer": "💡 灯灯照亮每一个 bug！",
+      "spark": "✨",
+      "match": {
+        "keywords": [
+          "verif",
+          "test",
+          "qa"
+        ]
+      },
+      "shiny": {
+        "palette": {
+          "#3B4A80": "#5E3A7A",
+          "#26305A": "#3E2454",
+          "#6F82C2": "#9A6CC0",
+          "#FFE066": "#FF8FD8",
+          "#F2B530": "#D9579F",
+          "#FFF8CC": "#FFE0F4"
+        },
+        "tolerance": 6,
+        "hue": 47,
+        "saturation": 0.96,
+        "lightness": 0.96
+      }
+    },
+    {
+      "id": "pebble",
+      "name": "岩岩",
+      "dexNo": 6,
+      "rarity": "SR",
+      "weight": 8,
+      "scale": 0.95,
+      "color": "#9AA0A6",
+      "cheer": "🪨 稳如岩岩，提交！",
+      "spark": "💎",
+      "match": {
+        "keywords": [
+          "pet",
+          "overlay",
+          "desktop",
+          "commit"
+        ]
+      },
+      "shiny": {
+        "palette": {
+          "#9AA0A6": "#D6A86A",
+          "#6E747A": "#A97B43",
+          "#C8CDD2": "#F0CF9A",
+          "#7FD4FF": "#FF6B8A",
+          "#D8F3FF": "#FFD3DD"
+        },
+        "tolerance": 6,
+        "hue": -176,
+        "saturation": 9,
+        "lightness": 1
+      }
+    },
+    {
+      "id": "astra",
+      "name": "星鲸",
+      "dexNo": 7,
+      "rarity": "SSR",
+      "weight": 3,
+      "scale": 1,
+      "color": "#4C72D6",
+      "cheer": "🐋 星鲸领航，全速前进！",
+      "spark": "⭐",
+      "match": {
+        "lead": true,
+        "keywords": [
+          "astra"
+        ]
+      },
+      "shiny": {
+        "palette": {
+          "#2D4BA0": "#6A2DA0",
+          "#1E3270": "#461E70",
+          "#5A82E0": "#A066DA",
+          "#FFE27A": "#7AF0FF",
+          "#E0B23A": "#3AB8D0",
+          "#7F9CF0": "#C58CF0",
+          "#B5CBFF": "#F2C4FF"
+        },
+        "tolerance": 6,
+        "hue": 47,
+        "saturation": 1,
+        "lightness": 1
+      }
+    }
+  ]
+}

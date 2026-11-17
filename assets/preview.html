@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Antigravity 宝可梦智能体桌宠图鉴预览 — Pokémon Agent Pets Preview</title>
+  <link rel="stylesheet" href="./pokemon-sprites.css" />
+  <style>
+    :root {
+      --bg-deep: #0b0f19;
+      --bg-card: rgba(15, 23, 42, 0.78);
+      --border-subtle: rgba(148, 163, 184, 0.18);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      padding: 28px 24px 64px;
+      background:
+        radial-gradient(circle at 15% 15%, rgba(255, 212, 59, 0.10), transparent 38%),
+        radial-gradient(circle at 85% 20%, rgba(168, 85, 247, 0.14), transparent 40%),
+        radial-gradient(circle at 50% 85%, rgba(56, 189, 248, 0.12), transparent 45%),
+        var(--bg-deep);
+      color: var(--text-main);
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding: 20px 24px;
+      border-radius: 18px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      backdrop-filter: blur(12px);
+    }
+
+    .title-group h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .title-group p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .btn {
+      padding: 7px 13px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(30, 41, 59, 0.85);
+      color: #e2e8f0;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .btn:hover {
+      border-color: #38bdf8;
+      transform: translateY(-1px);
+    }
+
+    .btn.active {
+      background: linear-gradient(135deg, #facc15, #f97316);
+      color: #0f172a;
+      border-color: transparent;
+      box-shadow: 0 0 14px rgba(250, 204, 21, 0.45);
+    }
+
+    .btn-mode {
+      background: rgba(14, 116, 144, 0.45);
+      border-color: rgba(56, 189, 248, 0.45);
+      color: #bae6fd;
+    }
+
+    .btn-mode.online {
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      color: #0f172a;
+      border-color: transparent;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 26px 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #e2e8f0;
+    }
+
+    .section-hint {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+
+    /* Interactive Draggable Sandbox Arena */
+    .pet-arena {
+      position: relative;
+      height: 300px;
+      border-radius: 20px;
+      background:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.65), rgba(15, 23, 42, 0.92)),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 40px),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 40px);
+      border: 1px solid rgba(56, 189, 248, 0.28);
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+    }
+
+    .arena-slot {
+      position: absolute;
+    }
+
+    /* 6x6 Full Species x State Matrix */
+    .matrix-wrap {
+      overflow-x: auto;
+      border-radius: 18px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      padding: 16px;
+    }
+
+    table.sprite-matrix {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 920px;
+    }
+
+    .sprite-matrix th,
+    .sprite-matrix td {
+      padding: 10px 8px;
+      text-align: center;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+    }
+
+    .sprite-matrix th {
+      font-size: 12.5px;
+      color: #cbd5e1;
+      background: rgba(30, 41, 59, 0.55);
+    }
+
+    .species-col {
+      text-align: left !important;
+      padding-left: 14px !important;
+      width: 165px;
+    }
+
+    .species-tag {
+      display: inline-flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .species-tag strong {
+      font-size: 14px;
+    }
+
+    .species-tag span {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .matrix-cell-svg {
+      width: 108px;
+      height: 108px;
+      margin: 0 auto;
+      cursor: pointer;
+      transition: transform 0.18s ease;
+    }
+
+    .matrix-cell-svg:hover {
+      transform: scale(1.1);
+    }
+
+    .matrix-cell-svg svg {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title-group">
+        <h1>⚡ Antigravity 宝可梦智能体桌宠视觉引擎（100% 官方原版动画形象）</h1>
+        <p>内置离线嵌入 7 只原版宝可梦动画（含 #150 超梦 Mewtwo）× 6 种实时状态光环特效 · 支持 Showdown 3D原版 与 黑白(BW)经典像素原版一键切换</p>
+      </div>
+      <div class="controls-bar" id="stateControls">
+        <button class="btn" data-set-state="thinking">💭 思考中</button>
+        <button class="btn active" data-set-state="working">⚡ 工作中</button>
+        <button class="btn" data-set-state="sleeping">💤 休眠中</button>
+        <button class="btn" data-set-state="dragging">🖐️ 拖拽悬空</button>
+        <button class="btn" data-set-state="celebrating">✨ 互动庆祝</button>
+        <button class="btn" data-set-state="error">💫 异常眩晕</button>
+        <button class="btn btn-mode" id="toggleGifBtn">✨ 当前：Showdown 3D原版动图</button>
+        <button class="btn btn-mode" id="toggleLiveBtn">📡 连接实时智能体 (17580)</button>
+      </div>
+    </header>
+
+    <div class="section-title">
+      🕹️ 互动悬浮桌宠舞台（可鼠标按住自由拖拽悬空、点击撸宠爆爱心 ✨）
+      <span class="section-hint">模拟 Swarm 七大智能体实时状态映射（新增 🔮 超梦 Mewtwo）</span>
+    </div>
+    <div class="pet-arena" id="petArena"></div>
+
+    <div class="section-title">
+      📖 7 种宝可梦 × 6 种状态全量动画矩阵（42 组独立 SVG 实时渲染）
+      <span class="section-hint">点击任意格子可在舞台上高亮对应状态</span>
+    </div>
+    <div class="matrix-wrap">
+      <table class="sprite-matrix">
+        <thead>
+          <tr>
+            <th class="species-col">宝可梦 / 推荐角色</th>
+            <th>💭 thinking<br><small>思考中</small></th>
+            <th>⚡ working<br><small>工作中</small></th>
+            <th>💤 sleeping<br><small>休眠中</small></th>
+            <th>🖐️ dragging<br><small>拖拽悬空</small></th>
+            <th>✨ celebrating<br><small>点击庆祝</small></th>
+            <th>💫 error<br><small>异常告警</small></th>
+          </tr>
+        </thead>
+        <tbody id="matrixBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="./pokemon-sprites.js"></script>
+  <script>
+    (function () {
+      const { SPECIES, SPECIES_LIST, CORE_STATES, getSvgMarkup, mountPet } = window.PokemonPets;
+
+      const demoAgents = [
+        { species: 'rotom', agentName: 'coordinator', state: 'working', statusText: '统筹分配宝可梦 Swarm 任务...' },
+        { species: 'mewtwo', agentName: 'reasoner', state: 'working', statusText: '🔮 精神击破！超能深度推理中...' },
+        { species: 'gengar', agentName: 'scout', state: 'thinking', statusText: '潜行扫描 transcript.jsonl 状态...' },
+        { species: 'eevee', agentName: 'sprites', state: 'celebrating', statusText: '绘制 7 只宝可梦全状态特效！' },
+        { species: 'pikachu', agentName: 'theme', state: 'working', statusText: '十万伏特编译暗色 IDE 主题...' },
+        { species: 'charizard', agentName: 'pet-overlay', state: 'working', statusText: '喷射火焰驱动 Windows 悬浮窗...' },
+        { species: 'umbreon', agentName: 'verifier', state: 'sleeping', statusText: '月光静候模块提测验收 zZz' }
+      ];
+
+      const arenaEl = document.getElementById('petArena');
+      const controllers = [];
+      let currentSpriteMode = 'authentic-showdown';
+
+      demoAgents.forEach((item, idx) => {
+        const slot = document.createElement('div');
+        slot.className = 'arena-slot';
+        slot.style.left = (20 + idx * 170) + 'px';
+        slot.style.top = (idx % 2 === 0 ? 40 : 68) + 'px';
+        arenaEl.appendChild(slot);
+
+        const ctrl = mountPet(slot, {
+          species: item.species,
+          state: item.state,
+          agentName: item.agentName,
+          statusText: item.statusText,
+          spriteMode: currentSpriteMode,
+          draggable: true,
+          size: 136
+        });
+        controllers.push(ctrl);
+      });
+
+      const statusSamples = {
+        thinking: '正在推理下一步最优方案...',
+        working: '高速执行工具调用与代码生成 ⚡',
+        sleeping: '任务待命休眠中 zZz...',
+        dragging: '哇！被鼠标抓起来悬空啦！',
+        celebrating: '耶！任务圆满完成 ❤️✨',
+        error: '哎呀 @_@ 遇到限流或语法报错！'
+      };
+
+      document.querySelectorAll('[data-set-state]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('[data-set-state]').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          const st = btn.getAttribute('data-set-state');
+          controllers.forEach((c) => {
+            c.setDragging(st === 'dragging');
+            c.setState(st, statusSamples[st]);
+          });
+        });
+      });
+
+      const matrixBody = document.getElementById('matrixBody');
+      function renderMatrix() {
+        matrixBody.innerHTML = '';
+        SPECIES_LIST.forEach((spId) => {
+          const meta = SPECIES[spId];
+          const tr = document.createElement('tr');
+
+          const tdHead = document.createElement('td');
+          tdHead.className = 'species-col';
+          tdHead.innerHTML =
+            '<div class="species-tag">' +
+              '<strong style="color:' + meta.themeColor + '">#' + String(meta.dexNo).padStart(3, '0') + ' ' + meta.cnName + ' (' + meta.enName + ')</strong>' +
+              '<span>' + meta.roleHint + '</span>' +
+            '</div>';
+          tr.appendChild(tdHead);
+
+          CORE_STATES.forEach((st) => {
+            const td = document.createElement('td');
+            const wrap = document.createElement('div');
+            wrap.className = 'matrix-cell-svg';
+            wrap.title = meta.cnName + ' - ' + st;
+            wrap.innerHTML = getSvgMarkup(spId, st, { spriteMode: currentSpriteMode });
+            wrap.addEventListener('click', () => {
+              const target = controllers.find((c) => c.getSpecies() === spId);
+              if (target) {
+                target.setDragging(st === 'dragging');
+                target.setState(st, meta.cnName + ' 切换至 ' + st + ' 状态！');
+              }
+            });
+            td.appendChild(wrap);
+            tr.appendChild(td);
+          });
+
+          matrixBody.appendChild(tr);
+        });
+      }
+
+      const toggleGifBtn = document.getElementById('toggleGifBtn');
+      toggleGifBtn.addEventListener('click', () => {
+        currentSpriteMode = currentSpriteMode === 'authentic-showdown' ? 'authentic-pixel' : 'authentic-showdown';
+        toggleGifBtn.classList.toggle('online', currentSpriteMode === 'authentic-pixel');
+        toggleGifBtn.textContent = currentSpriteMode === 'authentic-pixel'
+          ? '👾 当前：BW 经典像素原版动图'
+          : '✨ 当前：Showdown 3D原版动图';
+        controllers.forEach((c) => c.setSpriteMode(currentSpriteMode));
+        renderMatrix();
+      });
+
+      renderMatrix();
+
+      // Optional Live Sync with scout's Bridge on http://127.0.0.1:17580
+      let liveEventSource = null;
+      const toggleLiveBtn = document.getElementById('toggleLiveBtn');
+      function applyLiveSnapshot(payload) {
+        if (!payload || !Array.isArray(payload.agents)) return;
+        payload.agents.slice(0, controllers.length).forEach((ag, idx) => {
+          const ctrl = controllers[idx];
+          if (!ctrl) return;
+          if (ag.pokemonSpecies) ctrl.setSpecies(ag.pokemonSpecies);
+          ctrl.setAgentInfo({ agentName: ag.name || ag.id, statusText: ag.statusText || '' });
+          ctrl.setDragging(false);
+          ctrl.setState(ag.state || 'sleeping', ag.statusText || '');
+        });
+      }
+      toggleLiveBtn.addEventListener('click', async () => {
+        if (liveEventSource) {
+          liveEventSource.close();
+          liveEventSource = null;
+          toggleLiveBtn.classList.remove('online');
+          toggleLiveBtn.textContent = '📡 连接实时智能体 (17580)';
+          return;
+        }
+        try {
+          const res = await fetch('http://127.0.0.1:17580/api/agents');
+          const data = await res.json();
+          applyLiveSnapshot(data);
+          toggleLiveBtn.classList.add('online');
+          toggleLiveBtn.textContent = '🟢 实时同步中 (' + (data.agents ? data.agents.length : 0) + ' 智能体)';
+          liveEventSource = new EventSource('http://127.0.0.1:17580/api/events');
+          liveEventSource.addEventListener('snapshot', (ev) => {
+            try { applyLiveSnapshot(JSON.parse(ev.data)); } catch (_) {}
+          });
+          liveEventSource.onerror = () => {
+            toggleLiveBtn.textContent = '🟡 桥接重连中...';
+          };
+        } catch (_) {
+          toggleLiveBtn.textContent = '⚠️ 桥接未启动 (保持离线演示)';
+          setTimeout(() => { toggleLiveBtn.textContent = '📡 连接实时智能体 (17580)'; }, 2200);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

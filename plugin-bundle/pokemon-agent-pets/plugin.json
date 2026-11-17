@@ -1,0 +1,15 @@
+{
+  "name": "pokemon-agent-pets",
+  "displayName": "智能体桌宠 Agent Pets",
+  "version": "1.0.0",
+  "description": "把正在运行的 AI 智能体变成桌宠：在右侧副屏和 Windows 桌面实时显示每个智能体的状态（思考中/工作中/休眠中），形象来自可替换的皮肤包，附带六套配色主题和桌面透明悬浮窗。",
+  "logo": "assets/logo.svg",
+  "author": "Agent Pets contributors",
+  "homepage": "https://github.com/Qin-long/antigravity-pets",
+  "repository": "https://github.com/Qin-long/antigravity-pets",
+  "suggestedPrompts": [
+    "召唤桌面悬浮桌宠并打开右侧桌宠副屏",
+    "把配色主题切换为灵能紫或暗影紫",
+    "查看当前所有运行中智能体的状态（思考中/工作中/休眠中）"
+  ]
+}

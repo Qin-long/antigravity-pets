@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <radialGradient id="topBall" cx="38%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#FF6B6B"/>
+      <stop offset="55%" stop-color="#EF4444"/>
+      <stop offset="100%" stop-color="#B91C1C"/>
+    </radialGradient>
+    <radialGradient id="botBall" cx="50%" cy="75%" r="65%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#CBD5E1"/>
+    </radialGradient>
+    <linearGradient id="boltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FEF08A"/>
+      <stop offset="55%" stop-color="#FFD43B"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ~10% outer margin baked in (radius 48 centered at 64,64) -->
+  <circle cx="64" cy="64" r="50" fill="#0F172A" opacity="0.22"/>
+  <path d="M 16,64 A 48,48 0 0,1 112,64 Z" fill="url(#topBall)" stroke="#1E293B" stroke-width="5"/>
+  <path d="M 16,64 A 48,48 0 0,0 112,64 Z" fill="url(#botBall)" stroke="#1E293B" stroke-width="5"/>
+  <rect x="15" y="59" width="98" height="10" fill="#1E293B"/>
+
+  <!-- Center Pokéball Core -->
+  <circle cx="64" cy="64" r="16" fill="#1E293B"/>
+  <circle cx="64" cy="64" r="11" fill="#38BDF8"/>
+  <circle cx="60" cy="60" r="3.5" fill="#FFFFFF"/>
+
+  <!-- Electric Pikachu Bolt Badge -->
+  <polygon points="88,14 68,48 82,48 72,78 106,40 90,40"
+           fill="url(#boltGrad)" stroke="#1E293B" stroke-width="3.5" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,17 @@
+{
+  "command": "node",
+  "args": ["main.mjs"],
+  "restart_policy": "always",
+  "display_name": "智能体桌宠",
+  "description": "实时显示运行中的 AI 智能体（思考中/工作中/休眠中）：在右侧副屏拖拽桌宠、切换皮肤包和配色主题，并一键召唤 Windows 透明置顶的桌面悬浮窗。",
+  "has_web_ui": true,
+  "ui_config": {
+    "views": [
+      {
+        "path": "/",
+        "entrypoint": "SIDECAR_UI_ENTRYPOINT_AUX_PANE",
+        "title": "智能体桌宠"
+      }
+    ]
+  }
+}

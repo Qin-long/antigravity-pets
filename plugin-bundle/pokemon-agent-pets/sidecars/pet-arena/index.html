@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-pokemon-theme="mewtwo">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>智能体桌宠 · 副屏</title>
+  <script src="/preload.js"></script>
+  <link rel="stylesheet" href="../../../../theme-css/antigravity-pokemon-skin.css" />
+  <link rel="stylesheet" href="/assets/pet-sprites.css" />
+  <script src="/assets/pet-sprites.js"></script>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+    }
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+    }
+    *::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    *::-webkit-scrollbar-button {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+    *::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    *::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.22);
+      border-radius: 999px;
+    }
+    *::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.55);
+    }
+    .aux-wrap {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+    .summon-banner {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 6px;
+      align-items: center;
+    }
+    @media (max-width: 480px) {
+      .summon-banner {
+        grid-template-columns: 1fr 1fr;
+      }
+      .summon-banner .btn-summon-main {
+        grid-column: 1 / -1;
+      }
+    }
+    .aux-arena {
+      position: relative;
+      min-height: 280px;
+      height: 280px;
+      max-height: min(560px, calc(100vh - 96px));
+      border-radius: var(--pkmn-radius-md);
+      border: 1.5px dashed var(--pkmn-border-strong);
+      background:
+        radial-gradient(ellipse at 50% 85%, var(--pkmn-accent-soft) 0%, transparent 65%),
+        linear-gradient(180deg, rgba(8, 12, 22, 0.28) 0%, rgba(8, 12, 22, 0.58) 100%);
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+      user-select: none;
+    }
+    .aux-lanes {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .aux-lane-line {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      border-bottom: 1px dashed rgba(250, 204, 21, 0.28);
+      font-size: 9.5px;
+      color: #7dd3fc;
+      font-weight: 700;
+      padding-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .aux-session-banner {
+      position: absolute;
+      top: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 75;
+      max-width: 92%;
+      padding: 6px 12px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, rgba(42, 27, 8, 0.96), rgba(18, 14, 34, 0.96));
+      border: 1.5px solid #facc15;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+      color: #fef08a;
+      font-size: 11px;
+      font-weight: 800;
+      text-align: center;
+      display: none;
+      cursor: pointer;
+    }
+    .aux-session-banner.is-open {
+      display: block;
+    }
+    .aux-actor {
+      position: absolute;
+      cursor: grab;
+      touch-action: none;
+      z-index: 10;
+    }
+    .aux-actor.is-lead-actor {
+      z-index: 18;
+    }
+    .aux-actor.is-held {
+      cursor: grabbing;
+      z-index: 60;
+    }
+    .aux-actor.face-left .pk-pet-stage {
+      transform: scaleX(-1);
+    }
+    .aux-actor.face-left .pkmn-ctx-ring-svg {
+      transform: translate(-50%, -50%) scaleX(-1);
+    }
+    .pkmn-ctx-ring-svg {
+      position: absolute;
+      left: 50%;
+      top: 52%;
+      width: 92%;
+      height: 92%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 4;
+      overflow: visible;
+      filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.45));
+    }
+    .pkmn-ctx-ring-arc {
+      transition: stroke-dashoffset 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .pkmn-ctx-micro-pill {
+      margin: 1px auto 0 auto;
+      width: max-content;
+      max-width: 112px;
+      padding: 1px 5px;
+      border-radius: 999px;
+      font-size: 8.5px;
+      font-weight: 800;
+      font-family: var(--pkmn-font-mono);
+      background: rgba(9, 13, 24, 0.88);
+      border: 1px solid rgba(148, 163, 184, 0.32);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    .pkmn-ctx-red {
+      color: #fca5a5;
+    }
+    .pkmn-ctx-green {
+      color: #86efac;
+    }
+    .aux-lead-tag {
+      display: none;
+      margin: 0 auto 1px auto;
+      width: max-content;
+      max-width: 104px;
+      padding: 1px 5px;
+      border-radius: 999px;
+      font-size: 9px;
+      font-weight: 800;
+      background: rgba(30, 22, 8, 0.92);
+      border: 1px solid #facc15;
+      color: #fef08a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .aux-actor.is-lead-actor .aux-lead-tag {
+      display: block;
+    }
+    .agent-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .agent-cards.is-compact-queues {
+      max-height: min(560px, calc(100vh - 96px));
+      overflow-y: auto;
+      overflow-x: hidden;
+      gap: 5px;
+      padding-right: 3px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+    }
+    .agent-cards.is-compact-queues .aux-project-card {
+      padding: 6px;
+      gap: 4px;
+    }
+    .agent-cards.is-compact-queues .aux-queue-block {
+      gap: 3px;
+      padding-left: 6px;
+    }
+    .agent-cards.is-compact-queues .agent-row {
+      padding: 6px 8px;
+      gap: 3px;
+    }
+    .aux-project-card {
+      border-radius: 11px;
+      border: 1px solid var(--pkmn-border);
+      background: rgba(10, 14, 26, 0.36);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .aux-queue-block {
+      border-left: 2.5px solid #facc15;
+      padding-left: 7px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .agent-row {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      padding: 8px 10px;
+    }
+    .agent-row.is-lead-row {
+      border-color: rgba(250, 204, 21, 0.65);
+    }
+    .mini-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .mini-chip {
+      padding: 3px 7px;
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid var(--pkmn-border-subtle);
+      background: var(--pkmn-bg-deep);
+      color: var(--pkmn-text-secondary);
+      cursor: pointer;
+    }
+    .mini-chip:hover {
+      border-color: var(--pkmn-border-strong);
+      color: var(--pkmn-accent-primary);
+    }
+    .toast-box {
+      display: none;
+      padding: 8px 11px;
+      border-radius: 10px;
+      font-size: 11.5px;
+      font-weight: 700;
+      background: var(--pkmn-accent-soft);
+      border: 1px solid var(--pkmn-border-strong);
+      color: var(--pkmn-text-primary);
+    }
+    .toast-box.is-visible {
+      display: block;
+    }
+  </style>
+</head>
+<body class="pkmn-skin-root">
+  <div class="aux-wrap">
+    <!-- Rotom Header + Theme Switcher -->
+    <section class="pkmn-rotom-frame">
+      <div class="pkmn-rotom-header">
+        <div style="display:flex; align-items:center; gap:9px;">
+          <div class="pkmn-led-cluster">
+            <span class="pkmn-led-orb"></span>
+            <span class="pkmn-led-dot pkmn-led-dot--red"></span>
+            <span class="pkmn-led-dot pkmn-led-dot--yellow"></span>
+          </div>
+          <div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <strong style="font-size:14px;">智能体桌宠 · 会话列队</strong>
+              <span id="sync-badge" class="pkmn-badge pkmn-badge--pixel">SYNCING</span>
+            </div>
+            <div style="font-size:11px; color:var(--pkmn-text-muted);">
+              按项目分类列队 · 👑每排首宠为 LeadAgent（点击显会话名）· 待命超60s子宠自动退场
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:10px 12px; display:flex; flex-direction:column; gap:9px;">
+        <!-- One-Click Summon Windows Desktop Pets -->
+        <div class="summon-banner">
+          <button class="pkmn-btn pkmn-btn--primary btn-summon-main" onclick="summonWindowsPets(false)">
+            🪟 一键召唤 Windows 透明列队桌宠
+          </button>
+          <button class="pkmn-btn" onclick="openWebStage()" title="打开独立网页桌宠大舞台">
+            🌐 大舞台
+          </button>
+          <button class="pkmn-btn" onclick="summonWindowsPets(true)" title="收回桌面悬浮窗">
+            🛑 收回
+          </button>
+        </div>
+
+        <!-- 6 Theme Switcher -->
+        <div class="pkmn-theme-switcher">
+          <button class="pkmn-theme-chip" data-theme="pikachu" onclick="setTheme('pikachu')">⚡ 电光黄</button>
+          <button class="pkmn-theme-chip" data-theme="gengar" onclick="setTheme('gengar')">🟣 暗影紫</button>
+          <button class="pkmn-theme-chip" data-theme="charizard" onclick="setTheme('charizard')">🔥 烈焰橙</button>
+          <button class="pkmn-theme-chip" data-theme="umbreon" onclick="setTheme('umbreon')">🌙 月夜黑</button>
+          <button class="pkmn-theme-chip is-active" data-theme="mewtwo" onclick="setTheme('mewtwo')">🔮 灵能紫</button>
+          <button class="pkmn-theme-chip" data-theme="pokedex-light" onclick="setTheme('pokedex-light')">☀️ 晨光浅色</button>
+        </div>
+      </div>
+    </section>
+
+    <div id="toast" class="toast-box"></div>
+
+    <!-- Interactive Draggable Multi-Session Queue Arena inside Aux Pane -->
+    <section class="pkmn-glass-card" style="padding:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:7px; flex-wrap:wrap; gap:6px;">
+        <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
+          <span id="cnt-queues" class="pkmn-badge">🚩 0 队列</span>
+          <span id="cnt-total" class="pkmn-badge">🐾 0 在线</span>
+          <span id="cnt-think" class="pkmn-state-pill" data-state="thinking">💭 0</span>
+          <span id="cnt-work" class="pkmn-state-pill" data-state="working">⚡ 0</span>
+          <span id="cnt-sleep" class="pkmn-state-pill" data-state="sleeping">💤 0</span>
+        </div>
+        <div style="display:flex; gap:5px; flex-wrap:wrap;">
+          <select id="pack-select" class="mini-chip" title="皮肤包" onchange="selectPack(this.value)"></select>
+          <button id="btn-gif" class="mini-chip" onclick="toggleGif()" title="切换皮肤包里的画风">🎨 画风</button>
+          <button class="mini-chip" onclick="lineupAuxActors(true)">📏 列队</button>
+          <button id="btn-aux-walk" class="mini-chip" onclick="toggleAuxWalk()">🧍 漫步:关</button>
+          <button class="mini-chip" onclick="spawnTestHelper()">➕ 测试子宠</button>
+          <button class="mini-chip" onclick="resetSim()">🔄 重置</button>
+        </div>
+      </div>
+
+      <div id="aux-arena" class="aux-arena">
+        <div id="aux-lanes" class="aux-lanes"></div>
+        <div id="aux-session-banner" class="aux-session-banner" onclick="hideAuxSessionBanner()"></div>
+      </div>
+      <div style="font-size:10.5px; color:var(--pkmn-text-muted); margin-top:6px; display:flex; justify-content:space-between;">
+        <span>💡 单击 👑首宠显示当前会话名称 · 左键拖拽任意排布</span>
+        <span id="ws-label">📍 工作区同步中</span>
+      </div>
+    </section>
+
+    <!-- Live Project-Grouped Queue Cards -->
+    <section class="pkmn-glass-card" style="padding:10px;">
+      <div style="font-size:12px; font-weight:800; margin-bottom:7px;">
+        📁 项目会话列队与实时状态切换
+      </div>
+      <div id="agent-cards" class="agent-cards"></div>
+    </section>
+
+    <!-- Quick Prompt Bar for Active Conversation -->
+    <section class="pkmn-glass-card" style="padding:10px;">
+      <div style="font-size:12px; font-weight:800; margin-bottom:6px;">⚡ 快捷指令</div>
+      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="mini-chip" onclick="sendPrompt('/plan 请先帮我制定清晰的中文实施方案')">📋 /plan 战术规划</button>
+        <button class="mini-chip" onclick="sendPrompt('请检查当前项目结构并汇报进展')">🔍 扫描当前项目</button>
+        <button class="mini-chip" onclick="sendPrompt('/goal 请彻底完成当前任务并完整自测验证')">🏆 /goal 全力攻坚</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      const BRIDGE_URL = 'http://127.0.0.1:17580';
+      const SUBAGENT_IDLE_TTL_MS = 60000;
+      const arenaEl = document.getElementById('aux-arena');
+      const lanesEl = document.getElementById('aux-lanes');
+      const sessionBannerEl = document.getElementById('aux-session-banner');
+      const cardsEl = document.getElementById('agent-cards');
+      const actors = new Map();
+      const localAuxPets = new Map();
+      const localIdleSince = new Map();
+
+      let currentQueueRows = [];
+      let currentTheme = 'mewtwo';
+      let spriteMode = 'authentic-showdown';
+      let autoWalk = false;
+      let helperIdx = 1;
+      let bannerTimer = null;
+      let activeBannerLeadId = null;
+
+      function showToast(msg) {
+        const el = document.getElementById('toast');
+        el.textContent = msg;
+        el.classList.add('is-visible');
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(() => el.classList.remove('is-visible'), 3600);
+      }
+
+      // ---- Skin pack: descriptor + assets come through this sidecar (same origin), which proxies the bridge.
+      const Pets = window.PetSprites;
+      let packSig = '';
+      let packLoading = null;
+      const packAssetUrl = (u) => (u && u.indexOf('/packs/') === 0 ? '/api/pack-asset?p=' + encodeURIComponent(u.slice(7)) : u);
+
+      async function getJson(path) {
+        const r = await fetch(path, { cache: 'no-store' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }
+
+      function packSpeciesList() {
+        return Pets && Array.isArray(Pets.SPECIES_LIST) ? Pets.SPECIES_LIST.slice() : [];
+      }
+
+      function syncStyleButton() {
+        const btn = document.getElementById('btn-gif');
+        const info = Pets.styleInfo();
+        btn.hidden = !info.switchable;
+        const cur = spriteMode === 'authentic-pixel' ? info.pixel : info.main;
+        btn.textContent = '🎨 ' + (cur ? cur.label : '画风');
+      }
+
+      async function loadPackList(activeId) {
+        const sel = document.getElementById('pack-select');
+        try {
+          const data = await getJson('/api/packs');
+          const packs = Array.isArray(data.packs) ? data.packs : [];
+          sel.replaceChildren();
+          packs.forEach((p) => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = '🎨 ' + (p.name || p.id);
+            sel.appendChild(opt);
+          });
+          sel.value = activeId || data.active || '';
+          sel.hidden = packs.length < 2;
+        } catch (_) {
+          sel.hidden = true;
+        }
+      }
+
+      function loadPack() {
+        if (packLoading) return packLoading;
+        packLoading = (async () => {
+          try {
+            const desc = await getJson('/api/pack');
+            if (desc && desc.ok) {
+              packSig = desc.id + '@' + desc.version;
+              Pets.setPack(desc, { mapUrl: packAssetUrl });
+              syncStyleButton();
+              loadPackList(desc.id);
+            }
+          } catch (_) {
+            packSig = '';
+          } finally {
+            packLoading = null;
+          }
+        })();
+        return packLoading;
+      }
+
+      window.selectPack = async function (id) {
+        if (!id) return;
+        try {
+          const res = await sidecarPost('/api/pack-select', { id });
+          if (res && res.ok) {
+            await loadPack();
+            showToast('🎨 已切换皮肤包：' + ((Pets.getPack() || {}).name || id));
+            pollAgents();
+          } else {
+            showToast('⚠️ 切换皮肤包失败：' + ((res && res.error) || '未知错误'));
+          }
+        } catch (_) {
+          showToast('⚠️ 切换皮肤包失败：状态桥未连接');
+        }
+      };
+
+      window.hideAuxSessionBanner = function () {
+        sessionBannerEl.classList.remove('is-open');
+        activeBannerLeadId = null;
+        if (bannerTimer) {
+          clearTimeout(bannerTimer);
+          bannerTimer = null;
+        }
+      };
+
+      function showLeadSessionBanner(rec, toggleIfSame = true) {
+        if (toggleIfSame && activeBannerLeadId === rec.id && sessionBannerEl.classList.contains('is-open')) {
+          window.hideAuxSessionBanner();
+          return;
+        }
+        activeBannerLeadId = rec.id;
+        const title = rec.conversationTitle || '当前活跃会话';
+        const proj = rec.projectName || '全局会话';
+        sessionBannerEl.textContent = `💬 当前会话：${title}  ·  📁 ${proj}（双击领队弹起项目与会话）`;
+        sessionBannerEl.classList.add('is-open');
+        rec.controller.setAgentInfo({ statusText: `💬 ${title}` });
+        showToast(`👑 [${proj}] 当前会话：${title}（双击弹起）`);
+        if (bannerTimer) clearTimeout(bannerTimer);
+        bannerTimer = setTimeout(() => {
+          sessionBannerEl.classList.remove('is-open');
+          activeBannerLeadId = null;
+        }, 6000);
+      }
+
+      async function focusLeadSession(rec) {
+        if (!rec) return { ok: false };
+        const payload = {
+          conversationId: rec.conversationId || '',
+          conversationTitle: rec.conversationTitle || '',
+          projectName: rec.projectName || '',
+          workspacePath: rec.workspacePath || '',
+          windowId: rec.windowId || '',
+          source: 'pet-arena-sidecar'
+        };
+        const title = rec.conversationTitle || '当前活跃会话';
+        const proj = rec.projectName || '全局会话';
+        sessionBannerEl.textContent = `🚀 正在弹起项目与会话：${title}  ·  📁 ${proj}`;
+        sessionBannerEl.classList.add('is-open');
+        if (rec.controller) {
+          rec.controller.setState('celebrating', `🚀 跳转会话：${title}`);
+          rec.controller.triggerPoke();
+        }
+        showToast(`🚀 已唤醒项目 [${proj}] 并跳转会话：${title}`);
+        let resData = null;
+        try {
+          const r = await fetch(BRIDGE_URL + '/api/focus-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (r.ok) resData = await r.json();
+        } catch (_) {}
+        if (!resData) {
+          try { resData = await sidecarPost('/api/focus-session', payload); } catch (_) {}
+        }
+        return resData || { ok: true, fallback: true };
+      }
+
+      function formatTokensCompact(val) {
+        const n = Number(val);
+        if (!Number.isFinite(n) || n <= 0) return '0';
+        if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1) + 'M';
+        if (n >= 10000) return Math.round(n / 1000) + 'k';
+        if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+        return String(Math.round(n));
+      }
+
+      function normalizeAgentContext(ag) {
+        const raw = (ag && ag.context) || {};
+        const maxTokens = Number(raw.maxTokens || ag?.contextMaxTokens || 200000) || 200000;
+        const fallbackUsed = ag?.isLead ? 28000 : 14000;
+        const usedTokens = Number.isFinite(Number(raw.usedTokens))
+          ? Math.max(0, Number(raw.usedTokens))
+          : fallbackUsed;
+        const usedPctRaw = Number.isFinite(Number(raw.usedPct))
+          ? Number(raw.usedPct)
+          : (maxTokens > 0 ? (usedTokens / maxTokens) * 100 : 0);
+        const usedPct = Math.round(Math.min(100, Math.max(0, usedPctRaw)) * 10) / 10;
+        const cacheHitRaw = Number.isFinite(Number(raw.cacheHitPct))
+          ? Number(raw.cacheHitPct)
+          : (ag?.state === 'sleeping' && Number(ag?.idleMs || 0) > 300000 ? 0 : 84);
+        const cacheHitPct = Math.round(Math.min(100, Math.max(0, cacheHitRaw)) * 10) / 10;
+        const cachedTokens = Number.isFinite(Number(raw.cachedTokens))
+          ? Math.max(0, Number(raw.cachedTokens))
+          : Math.round(usedTokens * (cacheHitPct / 100));
+        const usedTokensLabel = raw.usedTokensLabel || formatTokensCompact(usedTokens);
+        const maxTokensLabel = raw.maxTokensLabel || formatTokensCompact(maxTokens);
+        const cachedLabel = formatTokensCompact(cachedTokens);
+        const tooltipText = raw.tooltipText ||
+          `🔴 已用上下文: ${usedTokensLabel} / ${maxTokensLabel} (${usedPct}%) | 🟢 缓存命中: ${cachedLabel} (${cacheHitPct}%)`;
+        return {
+          usedTokens,
+          maxTokens,
+          usedPct,
+          cachedTokens,
+          cacheHitPct,
+          usedTokensLabel,
+          maxTokensLabel,
+          tooltipText
+        };
+      }
+
+      const SVG_NS = 'http://www.w3.org/2000/svg';
+      const OUTER_R = 45;
+      const INNER_R = 39;
+      const OUTER_CIRC = 2 * Math.PI * OUTER_R;
+      const INNER_CIRC = 2 * Math.PI * INNER_R;
+
+      function createContextRingDom() {
+        const svg = document.createElementNS(SVG_NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 100 100');
+        svg.setAttribute('class', 'pkmn-ctx-ring-svg');
+
+        const mkCircle = (r, stroke, width, cls) => {
+          const c = document.createElementNS(SVG_NS, 'circle');
+          c.setAttribute('cx', '50');
+          c.setAttribute('cy', '50');
+          c.setAttribute('r', String(r));
+          c.setAttribute('fill', 'none');
+          c.setAttribute('stroke', stroke);
+          c.setAttribute('stroke-width', String(width));
+          if (cls) {
+            c.setAttribute('class', cls);
+            c.setAttribute('stroke-linecap', 'round');
+            c.setAttribute('transform', 'rotate(-90 50 50)');
+          }
+          return c;
+        };
+
+        const outerTrack = mkCircle(OUTER_R, 'rgba(239, 68, 68, 0.22)', 3.8, '');
+        const innerTrack = mkCircle(INNER_R, 'rgba(34, 197, 94, 0.20)', 3.4, '');
+        const redArc = mkCircle(OUTER_R, '#ef4444', 3.8, 'pkmn-ctx-ring-arc');
+        const greenArc = mkCircle(INNER_R, '#22c55e', 3.4, 'pkmn-ctx-ring-arc');
+        redArc.style.strokeDasharray = OUTER_CIRC.toFixed(2);
+        greenArc.style.strokeDasharray = INNER_CIRC.toFixed(2);
+
+        svg.appendChild(outerTrack);
+        svg.appendChild(innerTrack);
+        svg.appendChild(redArc);
+        svg.appendChild(greenArc);
+
+        const pill = document.createElement('div');
+        pill.className = 'pkmn-ctx-micro-pill';
+        const redSpan = document.createElement('span');
+        redSpan.className = 'pkmn-ctx-red';
+        const sepSpan = document.createElement('span');
+        sepSpan.style.color = '#64748b';
+        sepSpan.textContent = '·';
+        const greenSpan = document.createElement('span');
+        greenSpan.className = 'pkmn-ctx-green';
+        pill.appendChild(redSpan);
+        pill.appendChild(sepSpan);
+        pill.appendChild(greenSpan);
+
+        return { svg, redArc, greenArc, pill, redSpan, greenSpan };
+      }
+
+      function updateContextRingDom(ringRefs, ctx, hostEl) {
+        if (!ringRefs || !ctx) return;
+        const uPct = Math.min(100, Math.max(0, Number(ctx.usedPct || 0)));
+        const cPct = Math.min(100, Math.max(0, Number(ctx.cacheHitPct || 0)));
+        ringRefs.redArc.style.strokeDashoffset = (OUTER_CIRC * (1 - uPct / 100)).toFixed(2);
+        ringRefs.greenArc.style.strokeDashoffset = (INNER_CIRC * (1 - cPct / 100)).toFixed(2);
+        ringRefs.redArc.style.opacity = uPct <= 0.1 ? '0.15' : '1';
+        ringRefs.greenArc.style.opacity = cPct <= 0.1 ? '0.15' : '1';
+        ringRefs.redSpan.textContent = `🔴${Math.round(uPct)}%(${ctx.usedTokensLabel})`;
+        ringRefs.greenSpan.textContent = `🟢${Math.round(cPct)}%`;
+        if (hostEl) hostEl.title = ctx.tooltipText;
+      }
+
+      function resolveIdleMs(ag, nowMs) {
+        const key = String(ag.id || ag.name || 'unknown');
+        const st = String(ag.state || 'sleeping').toLowerCase();
+        if (st !== 'sleeping') {
+          localIdleSince.delete(key);
+          return 0;
+        }
+        if (typeof ag.idleMs === 'number' && Number.isFinite(ag.idleMs) && ag.idleMs >= 0) {
+          return ag.idleMs;
+        }
+        if (ag.idleSince) {
+          const parsed = Date.parse(ag.idleSince);
+          if (!Number.isNaN(parsed)) return Math.max(0, nowMs - parsed);
+        }
+        if (!localIdleSince.has(key)) localIdleSince.set(key, nowMs);
+        return Math.max(0, nowMs - localIdleSince.get(key));
+      }
+
+      function normalizeSnapshotQueues(snapshot) {
+        const nowMs = Date.now();
+        const rawQueues = [];
+
+        if (snapshot && Array.isArray(snapshot.projects) && snapshot.projects.length > 0) {
+          snapshot.projects.forEach((proj) => {
+            const pName = (proj && proj.projectName) || '全局会话';
+            const pWs = (proj && proj.workspacePath) || '';
+            (proj && Array.isArray(proj.queues) ? proj.queues : []).forEach((q, idx) => {
+              if (!q) return;
+              rawQueues.push({
+                conversationId: q.conversationId || q.queueId || ('conv-' + idx),
+                conversationTitle: q.conversationTitle || q.headerTitle || q.title || q.swarmTitle || '',
+                projectName: q.projectName || pName,
+                workspacePath: q.workspacePath || pWs,
+                windowId: q.windowId || '',
+                focused: Boolean(q.focused || q.isFocused || q.isFocusedUi || q.isActiveWindow),
+                lastActiveMs: Number(q.lastActiveMs || q.updatedAtMs || (q.isActiveQueue ? 20000 - idx : 10000 - idx)),
+                leadAgent: q.leadAgent || null,
+                subagents: Array.isArray(q.subagents) ? q.subagents : [],
+                agents: Array.isArray(q.agents) ? q.agents : []
+              });
+            });
+          });
+        } else if (snapshot && Array.isArray(snapshot.queues) && snapshot.queues.length > 0) {
+          snapshot.queues.forEach((q, idx) => {
+            if (!q) return;
+            rawQueues.push({
+              conversationId: q.conversationId || q.queueId || ('conv-' + idx),
+              conversationTitle: q.conversationTitle || q.headerTitle || q.title || q.swarmTitle || '',
+              projectName: q.projectName || '全局会话',
+              workspacePath: q.workspacePath || '',
+              windowId: q.windowId || '',
+              focused: Boolean(q.focused || q.isFocused || q.isFocusedUi || q.isActiveWindow),
+              lastActiveMs: Number(q.lastActiveMs || q.updatedAtMs || (10000 - idx)),
+              leadAgent: q.leadAgent || null,
+              subagents: Array.isArray(q.subagents) ? q.subagents : [],
+              agents: Array.isArray(q.agents) ? q.agents : []
+            });
+          });
+        } else if (snapshot && Array.isArray(snapshot.agents) && snapshot.agents.length > 0) {
+          const byConv = new Map();
+          snapshot.agents.forEach((ag) => {
+            if (!ag) return;
+            const cid = ag.conversationId || snapshot.activeSessionId || 'primary-session';
+            if (!byConv.has(cid)) {
+              byConv.set(cid, {
+                conversationId: cid,
+                conversationTitle: ag.conversationTitle || snapshot.swarmTitle || '当前活跃会话',
+                projectName: ag.projectName || '当前项目',
+                focused: true,
+                lastActiveMs: 10000,
+                leadAgent: null,
+                subagents: [],
+                agents: []
+              });
+            }
+            byConv.get(cid).agents.push(ag);
+          });
+          byConv.forEach((v) => rawQueues.push(v));
+        }
+
+        const localHelpers = [];
+        for (const [hid, hPet] of localAuxPets.entries()) {
+          const hIdle = resolveIdleMs(hPet, nowMs);
+          if (hPet.state === 'sleeping' && hIdle > SUBAGENT_IDLE_TTL_MS) {
+            localAuxPets.delete(hid);
+          } else {
+            localHelpers.push({ ...hPet, idleMs: hIdle });
+          }
+        }
+
+        const evaluated = [];
+        let fallbackBest = null;
+        let fallbackBestScore = -1;
+
+        rawQueues.forEach((rq, qIdx) => {
+          const convId = String(rq.conversationId || ('conv-' + qIdx));
+          const projName = String(rq.projectName || '全局会话').trim() || '全局会话';
+          const convTitle = String(rq.conversationTitle || '').trim() || ('会话 ' + convId.slice(0, 6));
+
+          let rawLead = rq.leadAgent;
+          const rawSubs = Array.isArray(rq.subagents) ? [...rq.subagents] : [];
+          if (!rawLead && Array.isArray(rq.agents) && rq.agents.length > 0) {
+            rq.agents.forEach((a) => {
+              const aIsLead = Boolean(a.isLead) || ['lead', 'coordinator', 'main'].includes(String(a.role || '')) || a.name === 'coordinator';
+              if (!rawLead && aIsLead) rawLead = a;
+              else rawSubs.push(a);
+            });
+          }
+          if (!rawLead) {
+            rawLead = {
+              id: convId + '::lead',
+              name: 'coordinator',
+              role: 'lead',
+              isLead: true,
+              state: 'sleeping',
+              idleMs: 0,
+              statusText: '💤 领队统筹中 · 点击显会话名',
+              pokemonSpecies: ''
+            };
+          }
+          if (qIdx === 0 && localHelpers.length > 0) {
+            localHelpers.forEach((lh) => {
+              if (!rawSubs.some((s) => s && s.id === lh.id)) rawSubs.push(lh);
+            });
+          }
+
+          const wsPath = String(rq.workspacePath || '');
+          const winId = String(rq.windowId || '');
+          const leadIdleMs = resolveIdleMs(rawLead, nowMs);
+          const leadNorm = {
+            ...rawLead,
+            actorKey: convId + '::' + (rawLead.id || rawLead.name || 'lead'),
+            rawId: rawLead.id || rawLead.name || 'lead',
+            name: rawLead.name || 'lead-agent',
+            isLead: true,
+            state: String(rawLead.state || 'sleeping').toLowerCase(),
+            idleMs: leadIdleMs,
+            context: normalizeAgentContext({ ...rawLead, isLead: true, idleMs: leadIdleMs }),
+            conversationId: convId,
+            conversationTitle: convTitle,
+            projectName: projName,
+            workspacePath: wsPath,
+            windowId: winId
+          };
+
+          const keptSubs = [];
+          const seenNames = new Set();
+          rawSubs.forEach((s) => {
+            if (!s) return;
+            const sIdle = resolveIdleMs(s, nowMs);
+            const sState = String(s.state || 'sleeping').toLowerCase();
+            if (sState === 'sleeping' && sIdle > SUBAGENT_IDLE_TTL_MS) return;
+            const sName = String(s.name || s.id || 'subagent');
+            if (sName === leadNorm.name && (s.id || sName) === leadNorm.rawId) return;
+            if (seenNames.has(sName)) return;
+            seenNames.add(sName);
+            keptSubs.push({
+              ...s,
+              actorKey: convId + '::' + (s.id || sName),
+              rawId: s.id || sName,
+              name: sName,
+              isLead: false,
+              state: sState,
+              idleMs: sIdle,
+              context: normalizeAgentContext({ ...s, isLead: false, state: sState, idleMs: sIdle }),
+              conversationId: convId,
+              conversationTitle: convTitle,
+              projectName: projName,
+              workspacePath: wsPath,
+              windowId: winId
+            });
+          });
+
+          const hasActiveSubagent = keptSubs.some((s) => s.state !== 'sleeping');
+          const keepQueue =
+            hasActiveSubagent ||
+            keptSubs.length > 0 ||
+            leadNorm.state !== 'sleeping' ||
+            leadNorm.idleMs <= SUBAGENT_IDLE_TTL_MS ||
+            rq.focused;
+
+          const qEntry = {
+            conversationId: convId,
+            conversationTitle: convTitle,
+            projectName: projName,
+            workspacePath: wsPath,
+            windowId: winId,
+            focused: rq.focused,
+            hasActiveSubagent,
+            lastActiveMs: rq.lastActiveMs,
+            leadAgent: leadNorm,
+            subagents: keptSubs
+          };
+
+          if (rq.lastActiveMs > fallbackBestScore) {
+            fallbackBestScore = rq.lastActiveMs;
+            fallbackBest = qEntry;
+          }
+          if (keepQueue) evaluated.push(qEntry);
+        });
+
+        if (evaluated.length === 0 && fallbackBest) {
+          fallbackBest.subagents = [];
+          evaluated.push(fallbackBest);
+        }
+
+        evaluated.sort((a, b) => {
+          if (a.focused !== b.focused) return a.focused ? -1 : 1;
+          const aAct = a.hasActiveSubagent || a.leadAgent.state !== 'sleeping';
+          const bAct = b.hasActiveSubagent || b.leadAgent.state !== 'sleeping';
+          if (aAct !== bAct) return aAct ? -1 : 1;
+          return b.lastActiveMs - a.lastActiveMs;
+        });
+
+        const projectOrder = [];
+        const projectBuckets = new Map();
+        evaluated.forEach((q) => {
+          if (!projectBuckets.has(q.projectName)) {
+            projectBuckets.set(q.projectName, []);
+            projectOrder.push(q.projectName);
+          }
+          projectBuckets.get(q.projectName).push(q);
+        });
+
+        const finalRows = [];
+        let rowIndex = 0;
+        projectOrder.forEach((pName) => {
+          projectBuckets.get(pName).forEach((q) => {
+            if (rowIndex >= 16) return;
+            const orderedSubs = [...q.subagents].sort((a, b) => {
+              return (a.state === 'sleeping' ? 1 : 0) - (b.state === 'sleeping' ? 1 : 0);
+            });
+            const leadItem = { ...q.leadAgent, rowIndex, colIndex: 0, isLead: true };
+            const subItems = orderedSubs.slice(0, 7).map((s, idx) => ({
+              ...s,
+              rowIndex,
+              colIndex: idx + 1,
+              isLead: false
+            }));
+            finalRows.push({
+              rowIndex,
+              projectName: q.projectName,
+              conversationId: q.conversationId,
+              conversationTitle: q.conversationTitle,
+              hasActiveSubagent: q.hasActiveSubagent,
+              leadAgent: leadItem,
+              subagents: subItems,
+              members: [leadItem, ...subItems]
+            });
+            rowIndex++;
+          });
+        });
+
+        return finalRows;
+      }
+
+      async function sidecarPost(path, payload) {
+        if (window.sidecar && typeof window.sidecar.fetch === 'function') {
+          const res = await window.sidecar.fetch(path, {
+            method: 'POST',
+            body: JSON.stringify(payload || {})
+          });
+          return await res.json();
+        }
+        const res = await fetch(path, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload || {})
+        });
+        return await res.json();
+      }
+
+      let lastSyncedAuxTheme = '';
+      window.setTheme = function (theme, fromBridge = false) {
+        const normTheme = theme === 'rotom-light' ? 'pokedex-light' : theme;
+        currentTheme = normTheme;
+        document.documentElement.setAttribute('data-pokemon-theme', normTheme);
+        document.querySelectorAll('[data-theme]').forEach((b) => {
+          b.classList.toggle('is-active', b.getAttribute('data-theme') === normTheme);
+        });
+        try { localStorage.setItem('pkmn_aux_theme', normTheme); } catch (_) {}
+        if (!fromBridge) {
+          lastSyncedAuxTheme = normTheme;
+          const bridgeTheme = normTheme === 'pokedex-light' ? 'rotom-light' : normTheme;
+          fetch(BRIDGE_URL + '/api/theme', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ theme: bridgeTheme, source: 'pet-arena-sidecar' })
+          }).catch(() => {
+            sidecarPost('/api/theme', { theme: bridgeTheme, source: 'pet-arena-sidecar' }).catch(() => {});
+          });
+        }
+      };
+
+      window.summonWindowsPets = async function (stop) {
+        try {
+          const wpfStyle = spriteMode === 'authentic-pixel' ? 'pixel' : 'showdown';
+          showToast(stop ? '🛑 正在收回全局共享悬浮窗...' : '⚡ 正在静默唤醒 v4.1 全局置顶共享浮窗 (零命令行黑框)...');
+          if (!stop) {
+            fetch(BRIDGE_URL + '/api/summon-overlay', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ theme: currentTheme, spriteStyle: wpfStyle, forceRestart: true, source: 'pet-arena-sidecar' })
+            }).catch(() => {});
+          }
+          const res = await sidecarPost('/api/summon-desktop-pet', {
+            theme: currentTheme,
+            spriteStyle: wpfStyle,
+            stop: Boolean(stop),
+            bindToIde: true
+          });
+          if (res && res.ok) {
+            showToast(stop
+              ? '✅ 已收回桌面全局共享浮窗！'
+              : '🎉 已唤醒 v4.1 全局置顶共享浮窗！外圈🔴已用上下文 · 内圈🟢缓存命中！');
+          } else {
+            showToast('💡 请在终端运行 .\\start-pokemon-ide.ps1 召唤桌面悬浮宠');
+          }
+        } catch (_) {
+          showToast('💡 离线预览模式：请运行 .\\start-pokemon-ide.ps1 启动 Windows 桌面悬浮宠');
+        }
+      };
+
+      window.openWebStage = async function () {
+        try {
+          const res = await sidecarPost('/api/open-web-stage', {});
+          if (res && res.ok) {
+            showToast('🌐 已打开独立的桌宠舞台！');
+            return;
+          }
+        } catch (_) {}
+        window.open(BRIDGE_URL + '/stage', '_blank');
+      };
+
+      window.toggleGif = function () {
+        spriteMode = spriteMode === 'authentic-showdown' ? 'authentic-pixel' : 'authentic-showdown';
+        syncStyleButton();
+        actors.forEach((ac) => ac.controller.setSpriteMode(spriteMode));
+      };
+
+      window.toggleAuxWalk = function () {
+        autoWalk = !autoWalk;
+        document.getElementById('btn-aux-walk').textContent = autoWalk ? '🚶 漫步:开' : '🧍 漫步:关';
+        let idx = 0;
+        actors.forEach((ac) => {
+          ac.vx = autoWalk ? (idx % 2 === 0 ? 0.42 : -0.42) : 0;
+          if (!autoWalk) ac.el.classList.remove('face-left');
+          idx++;
+        });
+      };
+
+      window.lineupAuxActors = function (resetManual = true) {
+        const rect = arenaEl.getBoundingClientRect();
+        if (resetManual) {
+          actors.forEach((ac) => {
+            ac.userDragged = false;
+            if (ac.box) ac.box.style.transform = '';
+          });
+        }
+        const nonDragged = Array.from(actors.values()).filter((ac) => !ac.userDragged);
+        if (nonDragged.length === 0) {
+          arenaEl.classList.remove('is-compact-queues');
+          arenaEl.style.height = '280px';
+          lanesEl.style.height = '100%';
+          lanesEl.replaceChildren();
+          return;
+        }
+
+        const rowMap = new Map();
+        nonDragged.forEach((ac) => {
+          const r = Number.isFinite(ac.rowIndex) ? ac.rowIndex : 0;
+          if (!rowMap.has(r)) rowMap.set(r, []);
+          rowMap.get(r).push(ac);
+        });
+        const rowKeys = Array.from(rowMap.keys()).sort((a, b) => a - b);
+        const rowCount = rowKeys.length;
+        const maxCols = Math.max(...rowKeys.map((k) => rowMap.get(k).length), 1);
+
+        const isCompact = rowCount > 3;
+        arenaEl.classList.toggle('is-compact-queues', isCompact);
+        const contentH = isCompact ? Math.max(280, rowCount * 96 + 24) : 280;
+        arenaEl.style.height = contentH + 'px';
+        lanesEl.style.height = contentH + 'px';
+
+        const w = rect.width || 340;
+        const h = isCompact ? contentH : (rect.height || 280);
+        const baseActorW = 98;
+        const availW = Math.max(180, w - 16);
+
+        const gap = maxCols > 4 ? 4 : 6;
+        const wScale = Math.min(1, Math.max(0.42, (availW - (maxCols - 1) * gap) / (maxCols * baseActorW)));
+        const hScale = rowCount > 1
+          ? Math.min(isCompact ? 0.68 : 1, Math.max(0.45, (h - 32) / (rowCount * 160)))
+          : 1;
+        const fitScale = Math.min(wScale, hScale);
+        const effectiveW = Math.floor(baseActorW * fitScale);
+        const effectiveH = Math.round(160 * fitScale);
+        const stride = effectiveW + gap;
+
+        const baseBottomY = Math.round(Math.max(20, h - effectiveH - 6));
+        const rowStepY = rowCount > 1
+          ? Math.round(Math.min(effectiveH + (isCompact ? 6 : 8), Math.max(66, (baseBottomY - 18) / (rowCount - 1))))
+          : 0;
+
+        lanesEl.replaceChildren();
+
+        rowKeys.forEach((rKey, rPos) => {
+          const rowActors = rowMap.get(rKey).sort((a, b) => {
+            if (a.isLead !== b.isLead) return a.isLead ? -1 : 1;
+            return (a.colIndex || 0) - (b.colIndex || 0);
+          });
+          const count = rowActors.length;
+          const totalRowW = count * effectiveW + (count - 1) * gap;
+          const startX = rowCount === 1
+            ? Math.max(6, Math.round((w - totalRowW) / 2))
+            : 8;
+          const rowY = Math.max(16, Math.round(baseBottomY - rPos * rowStepY));
+
+          rowActors.forEach((ac, cIdx) => {
+            ac.x = startX + cIdx * stride;
+            ac.y = rowY;
+            ac.vx = 0;
+            ac.scale = fitScale;
+            if (ac.box) {
+              ac.box.style.transformOrigin = 'top left';
+              ac.box.style.transform = fitScale < 0.995 ? `scale(${fitScale.toFixed(3)})` : '';
+            }
+            ac.el.classList.remove('face-left');
+            ac.el.style.left = ac.x + 'px';
+            ac.el.style.top = ac.y + 'px';
+          });
+
+          if (rowActors[0]) {
+            const line = document.createElement('div');
+            line.className = 'aux-lane-line';
+            line.style.top = Math.max(18, Math.round(rowY + effectiveH - 14)) + 'px';
+            line.textContent = `📁 ${rowActors[0].projectName} · 💬 ${rowActors[0].conversationTitle}`;
+            lanesEl.appendChild(line);
+          }
+        });
+      };
+
+      async function sendSimulate(body) {
+        try {
+          await fetch(BRIDGE_URL + '/api/simulate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+        } catch (_) {
+          try { await sidecarPost('/api/simulate', body); } catch (_) {}
+        }
+      }
+
+      window.spawnTestHelper = async function () {
+        const spList = packSpeciesList();
+        const sp = spList.length ? spList[helperIdx % spList.length] : '';
+        const id = 'aux-helper-' + (helperIdx++);
+        const primaryRow = currentQueueRows[0] || {};
+        const item = {
+          id,
+          name: id,
+          role: 'helper',
+          isLead: false,
+          conversationId: primaryRow.conversationId || 'primary-session',
+          conversationTitle: primaryRow.conversationTitle || '当前活跃会话',
+          projectName: primaryRow.projectName || '当前项目',
+          state: 'working',
+          idleMs: 0,
+          statusText: '⚡ 副屏召唤的协战子智能体！',
+          pokemonSpecies: sp,
+          source: 'simulated'
+        };
+        localAuxPets.set(id, item);
+        await sendSimulate({ ...item, ttlMs: 120000 });
+        pollAgents();
+      };
+
+      window.resetSim = async function () {
+        localAuxPets.clear();
+        await sendSimulate({ action: 'reset' });
+        pollAgents();
+        window.lineupAuxActors(true);
+        showToast('🔄 已恢复实时项目会话列队同步');
+      };
+
+      window.sendPrompt = async function (text) {
+        if (window.sidecar && window.sidecar.agent && window.sidecar.conversationId) {
+          try {
+            await window.sidecar.agent.sendMessage(text);
+            showToast('⚡ 已发送指令到当前对话！');
+            return;
+          } catch (_) {}
+        }
+        try { await navigator.clipboard.writeText(text); } catch (_) {}
+        showToast('📋 已复制指令：' + text);
+      };
+
+      function upsertActor(ag, idx) {
+        let rec = actors.get(ag.actorKey);
+        let slotChanged = false;
+        const dispName = ag.isLead ? ('👑 ' + (ag.name || 'lead')) : (ag.name || 'agent');
+
+        if (!rec) {
+          const rect = arenaEl.getBoundingClientRect();
+          const el = document.createElement('div');
+          el.className = 'aux-actor' + (ag.isLead ? ' is-lead-actor' : '');
+
+          const leadTag = document.createElement('div');
+          leadTag.className = 'aux-lead-tag';
+          leadTag.textContent = '📁 ' + (ag.projectName || '全局会话');
+          el.appendChild(leadTag);
+
+          const box = document.createElement('div');
+          el.appendChild(box);
+          arenaEl.appendChild(el);
+
+          const x = Math.round(10 + idx * 96);
+          const y = Math.round(Math.max(24, (rect.height || 280) - 156));
+          el.style.left = x + 'px';
+          el.style.top = y + 'px';
+
+          rec = {
+            id: ag.actorKey,
+            rawId: ag.rawId || ag.id,
+            name: ag.name || 'agent',
+            isLead: Boolean(ag.isLead),
+            rowIndex: ag.rowIndex || 0,
+            colIndex: ag.colIndex || 0,
+            projectName: ag.projectName || '全局会话',
+            workspacePath: ag.workspacePath || '',
+            windowId: ag.windowId || '',
+            conversationId: ag.conversationId || 'session-0',
+            conversationTitle: ag.conversationTitle || '当前活跃会话',
+            idleMs: Number(ag.idleMs || 0),
+            context: ag.context || normalizeAgentContext(ag),
+            state: ag.state || 'sleeping',
+            statusText: ag.statusText || '',
+            species: ag.pokemonSpecies || '',
+            x,
+            y,
+            vx: 0,
+            scale: 1,
+            userDragged: false,
+            isHeld: false,
+            el,
+            leadTagEl: leadTag,
+            box,
+            ringRefs: null,
+            controller: null
+          };
+
+          let auxSingleClickTimer = null;
+          const controller = Pets.mountPet(box, {
+            species: ag.pokemonSpecies || '',
+            shiny: Boolean(ag.shiny),
+            state: ag.state || 'working',
+            agentName: dispName,
+            statusText: ag.statusText || '',
+            spriteMode,
+            size: 98,
+            interactive: true,
+            onPoke: () => {
+              if (rec.isLead) {
+                if (auxSingleClickTimer) clearTimeout(auxSingleClickTimer);
+                auxSingleClickTimer = setTimeout(() => {
+                  auxSingleClickTimer = null;
+                  showLeadSessionBanner(rec, true);
+                }, 220);
+              }
+            }
+          });
+          rec.controller = controller;
+          rec.species = controller.getSpecies();
+
+          // v4.1 Mount Concentric Circular Progress Rings (Outer 🔴 Used Context % + Inner 🟢 Cache Hit %)
+          const ringRefs = createContextRingDom();
+          const stageNode = box.querySelector('.pk-pet-stage') || box;
+          stageNode.appendChild(ringRefs.svg);
+          box.appendChild(ringRefs.pill);
+          rec.ringRefs = ringRefs;
+          updateContextRingDom(ringRefs, rec.context, el);
+
+          el.addEventListener('dblclick', (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (auxSingleClickTimer) {
+              clearTimeout(auxSingleClickTimer);
+              auxSingleClickTimer = null;
+            }
+            if (rec.isLead) {
+              focusLeadSession(rec);
+            }
+          });
+
+          let drag = null;
+          el.addEventListener('pointerdown', (ev) => {
+            if (ev.button !== 0) return;
+            drag = { id: ev.pointerId, sx: ev.clientX, sy: ev.clientY, ox: rec.x, oy: rec.y, moved: false };
+            try { el.setPointerCapture(ev.pointerId); } catch (_) {}
+          });
+          el.addEventListener('pointermove', (ev) => {
+            if (!drag || ev.pointerId !== drag.id) return;
+            const dx = ev.clientX - drag.sx;
+            const dy = ev.clientY - drag.sy;
+            if (!drag.moved && Math.hypot(dx, dy) > 4) {
+              drag.moved = true;
+              rec.isHeld = true;
+              el.classList.add('is-held');
+              rec.controller.setDragging(true);
+            }
+            if (drag.moved) {
+              const b = arenaEl.getBoundingClientRect();
+              const maxDragH = Math.max(b.height, arenaEl.scrollHeight || b.height);
+              rec.x = Math.max(2, Math.min(b.width - 110, drag.ox + dx));
+              rec.y = Math.max(8, Math.min(maxDragH - 135, drag.oy + dy));
+              el.style.left = Math.round(rec.x) + 'px';
+              el.style.top = Math.round(rec.y) + 'px';
+            }
+          });
+          const endDrag = (ev) => {
+            if (!drag || ev.pointerId !== drag.id) return;
+            if (drag.moved) {
+              rec.userDragged = true;
+              rec.isHeld = false;
+              el.classList.remove('is-held');
+              rec.controller.setDragging(false);
+            }
+            drag = null;
+          };
+          el.addEventListener('pointerup', endDrag);
+          el.addEventListener('pointercancel', endDrag);
+
+          actors.set(ag.actorKey, rec);
+          slotChanged = true;
+        } else {
+          if (rec.rowIndex !== ag.rowIndex || rec.colIndex !== ag.colIndex || rec.isLead !== Boolean(ag.isLead)) {
+            slotChanged = true;
+          }
+          rec.name = ag.name || rec.name;
+          rec.isLead = Boolean(ag.isLead);
+          rec.rowIndex = ag.rowIndex;
+          rec.colIndex = ag.colIndex;
+          rec.projectName = ag.projectName || rec.projectName;
+          rec.workspacePath = ag.workspacePath || rec.workspacePath;
+          rec.windowId = ag.windowId || rec.windowId;
+          rec.conversationId = ag.conversationId || rec.conversationId;
+          rec.conversationTitle = ag.conversationTitle || rec.conversationTitle;
+          rec.idleMs = Number(ag.idleMs || 0);
+          rec.context = ag.context || normalizeAgentContext(ag);
+          rec.state = ag.state || 'sleeping';
+          rec.statusText = ag.statusText || '';
+          rec.el.classList.toggle('is-lead-actor', rec.isLead);
+          rec.leadTagEl.textContent = '📁 ' + rec.projectName;
+          updateContextRingDom(rec.ringRefs, rec.context, rec.el);
+
+          if (ag.pokemonSpecies && ag.pokemonSpecies !== rec.controller.getSpecies()) {
+            rec.species = ag.pokemonSpecies;
+            rec.controller.setSpecies(ag.pokemonSpecies);
+          }
+          rec.controller.setShiny(Boolean(ag.shiny));
+          rec.controller.setAgentInfo({ agentName: dispName });
+          if (activeBannerLeadId !== rec.id) {
+            rec.controller.setState(rec.state, rec.statusText);
+          }
+        }
+        return slotChanged;
+      }
+
+      function renderCards(rows) {
+        cardsEl.replaceChildren();
+        const queueRows = Array.isArray(rows) ? rows : currentQueueRows;
+        cardsEl.classList.toggle('is-compact-queues', queueRows.length > 3);
+        let think = 0, work = 0, sleep = 0;
+
+        actors.forEach((rec) => {
+          const st = rec.controller.getState();
+          if (st === 'thinking') think++;
+          else if (st === 'working' || st === 'celebrating') work++;
+          else sleep++;
+        });
+
+        const byProj = new Map();
+        queueRows.forEach((r) => {
+          if (!byProj.has(r.projectName)) byProj.set(r.projectName, []);
+          byProj.get(r.projectName).push(r);
+        });
+
+        byProj.forEach((projQueues, projName) => {
+          const pCard = document.createElement('div');
+          pCard.className = 'aux-project-card';
+
+          const pHeader = document.createElement('div');
+          pHeader.style.cssText = 'display:flex; justify-content:space-between; align-items:center; font-size:11.5px; font-weight:800; color:#7dd3fc;';
+          const pTitle = document.createElement('span');
+          pTitle.textContent = '📁 ' + projName;
+          const pBadge = document.createElement('span');
+          pBadge.className = 'pkmn-badge';
+          pBadge.textContent = projQueues.length + ' 队列';
+          pHeader.appendChild(pTitle);
+          pHeader.appendChild(pBadge);
+          pCard.appendChild(pHeader);
+
+          projQueues.forEach((qRow) => {
+            const qBlock = document.createElement('div');
+            qBlock.className = 'aux-queue-block';
+
+            const qHead = document.createElement('div');
+            qHead.style.cssText = 'font-size:11px; font-weight:700; color:#fef08a; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+            qHead.textContent = `🚩 队列 #${qRow.rowIndex + 1} · 💬 ${qRow.conversationTitle}`;
+            let qHeadTimer = null;
+            qHead.addEventListener('click', () => {
+              const leadRec = actors.get(qRow.leadAgent.actorKey);
+              if (!leadRec) return;
+              if (qHeadTimer) clearTimeout(qHeadTimer);
+              qHeadTimer = setTimeout(() => {
+                qHeadTimer = null;
+                leadRec.controller.triggerPoke();
+                showLeadSessionBanner(leadRec, false);
+              }, 220);
+            });
+            qHead.addEventListener('dblclick', (ev) => {
+              ev.preventDefault();
+              if (qHeadTimer) { clearTimeout(qHeadTimer); qHeadTimer = null; }
+              const leadRec = actors.get(qRow.leadAgent.actorKey);
+              if (leadRec) focusLeadSession(leadRec);
+            });
+            qBlock.appendChild(qHead);
+
+            qRow.members.forEach((m) => {
+              const rec = actors.get(m.actorKey);
+              if (!rec) return;
+              const st = rec.controller.getState();
+
+              const row = document.createElement('div');
+              row.className = 'pkmn-glass-card agent-row' + (rec.isLead ? ' is-lead-row' : '');
+
+              const topDiv = document.createElement('div');
+              topDiv.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
+              const nameStrong = document.createElement('strong');
+              nameStrong.style.cssText = 'font-size:12px; cursor:pointer;';
+              nameStrong.textContent = (rec.isLead ? '👑 ' : '🐾 ') + rec.name;
+              let nameTimer = null;
+              nameStrong.addEventListener('click', () => {
+                if (rec.isLead) {
+                  if (nameTimer) clearTimeout(nameTimer);
+                  nameTimer = setTimeout(() => {
+                    nameTimer = null;
+                    rec.controller.triggerPoke();
+                    showLeadSessionBanner(rec, false);
+                  }, 220);
+                } else {
+                  rec.controller.triggerPoke();
+                }
+              });
+              nameStrong.addEventListener('dblclick', (ev) => {
+                ev.preventDefault();
+                if (nameTimer) { clearTimeout(nameTimer); nameTimer = null; }
+                if (rec.isLead) focusLeadSession(rec);
+              });
+              const pill = document.createElement('span');
+              pill.className = 'pkmn-state-pill';
+              pill.setAttribute('data-state', st);
+              pill.textContent = st;
+              topDiv.appendChild(nameStrong);
+              topDiv.appendChild(pill);
+
+              const statusDiv = document.createElement('div');
+              statusDiv.style.cssText = 'font-size:11px; color:var(--pkmn-text-secondary);';
+              statusDiv.textContent = rec.isLead
+                ? ('💬 单击看名 / 双击弹起：' + rec.conversationTitle)
+                : (rec.statusText || '待命中');
+
+              const ctxInfo = rec.context || normalizeAgentContext(rec);
+              const ctxDiv = document.createElement('div');
+              ctxDiv.style.cssText = 'font-size:10px; font-family:var(--pkmn-font-mono); display:flex; gap:8px; align-items:center;';
+              const cRed = document.createElement('span');
+              cRed.className = 'pkmn-ctx-red';
+              cRed.textContent = `🔴 已用上下文 ${ctxInfo.usedPct}% (${ctxInfo.usedTokensLabel}/${ctxInfo.maxTokensLabel})`;
+              const cGrn = document.createElement('span');
+              cGrn.className = 'pkmn-ctx-green';
+              cGrn.textContent = `🟢 缓存命中 ${ctxInfo.cacheHitPct}%`;
+              ctxDiv.appendChild(cRed);
+              ctxDiv.appendChild(cGrn);
+              row.title = ctxInfo.tooltipText;
+
+              const chipRow = document.createElement('div');
+              chipRow.className = 'mini-chip-row';
+              if (rec.isLead) {
+                const jumpBtn = document.createElement('button');
+                jumpBtn.className = 'mini-chip';
+                jumpBtn.textContent = '🚀弹起会话';
+                jumpBtn.addEventListener('click', () => focusLeadSession(rec));
+                chipRow.appendChild(jumpBtn);
+              }
+              [
+                ['thinking', '💭思考'],
+                ['working', '⚡工作'],
+                ['sleeping', '💤待命'],
+                ['celebrating', '✨欢呼']
+              ].forEach(([simKey, simLabel]) => {
+                const b = document.createElement('button');
+                b.className = 'mini-chip';
+                b.textContent = simLabel;
+                b.addEventListener('click', async () => {
+                  rec.controller.setState(simKey, '手动切换: ' + simKey);
+                  if (simKey === 'celebrating') rec.controller.triggerPoke();
+                  await sendSimulate({ id: rec.rawId, name: rec.name, state: simKey, ttlMs: 90000 });
+                  renderCards(currentQueueRows);
+                });
+                chipRow.appendChild(b);
+              });
+
+              const spBtn = document.createElement('button');
+              spBtn.className = 'mini-chip';
+              spBtn.textContent = '🔄换宠';
+              spBtn.addEventListener('click', async () => {
+                const order = packSpeciesList();
+                if (!order.length) return;
+                const nextSp = order[(order.indexOf(rec.controller.getSpecies()) + 1) % order.length];
+                rec.controller.setSpecies(nextSp);
+                rec.controller.triggerPoke();
+                await sendSimulate({ id: rec.rawId, name: rec.name, pokemonSpecies: nextSp, ttlMs: 300000 });
+              });
+              chipRow.appendChild(spBtn);
+
+              row.appendChild(topDiv);
+              row.appendChild(statusDiv);
+              row.appendChild(ctxDiv);
+              row.appendChild(chipRow);
+              qBlock.appendChild(row);
+            });
+
+            pCard.appendChild(qBlock);
+          });
+
+          cardsEl.appendChild(pCard);
+        });
+
+        document.getElementById('cnt-queues').textContent = '🚩 ' + queueRows.length + ' 队列';
+        document.getElementById('cnt-total').textContent = '🐾 ' + actors.size + ' 在线';
+        document.getElementById('cnt-think').textContent = '💭 ' + think;
+        document.getElementById('cnt-work').textContent = '⚡ ' + work;
+        document.getElementById('cnt-sleep').textContent = '💤 ' + sleep;
+      }
+
+      let sseAux = null;
+      let offlineTicks = 0;
+
+      function applyAuxSnapshot(snapshot) {
+        if (!snapshot) return;
+        if (snapshot.pack && snapshot.pack.id) {
+          const sig = snapshot.pack.id + '@' + snapshot.pack.version;
+          if (sig !== packSig) {
+            packSig = sig;
+            loadPack();
+          }
+        }
+        if (snapshot.activeTheme) {
+          const remoteTh = snapshot.activeTheme === 'rotom-light' ? 'pokedex-light' : snapshot.activeTheme;
+          if (remoteTh !== lastSyncedAuxTheme) {
+            lastSyncedAuxTheme = remoteTh;
+            window.setTheme(remoteTh, true);
+          }
+        }
+        const rows = normalizeSnapshotQueues(snapshot);
+        currentQueueRows = rows;
+        document.getElementById('sync-badge').textContent = 'LIVE v4';
+
+        if (rows[0] && rows[0].projectName) {
+          document.getElementById('ws-label').textContent = '📍 ' + rows[0].projectName;
+        }
+
+        const seen = new Set();
+        let changed = false;
+        let flatIdx = 0;
+        rows.forEach((r) => {
+          r.members.forEach((m) => {
+            seen.add(m.actorKey);
+            if (upsertActor(m, flatIdx)) changed = true;
+            flatIdx++;
+          });
+        });
+
+        for (const [id, rec] of actors.entries()) {
+          if (!seen.has(id)) {
+            rec.controller.destroy();
+            rec.el.remove();
+            actors.delete(id);
+            changed = true;
+          }
+        }
+        if (changed) window.lineupAuxActors(false);
+        renderCards(rows);
+      }
+
+      function connectAuxSSE() {
+        if (sseAux) return;
+        try {
+          sseAux = new EventSource(BRIDGE_URL + '/api/events');
+          const onMsg = (ev) => {
+            try {
+              if (ev && ev.data) {
+                offlineTicks = 0;
+                applyAuxSnapshot(JSON.parse(ev.data));
+              }
+            } catch (_) {}
+          };
+          sseAux.addEventListener('snapshot', onMsg);
+          sseAux.addEventListener('pack-change', () => loadPack());
+          sseAux.onmessage = onMsg;
+          sseAux.onerror = () => {
+            if (sseAux) {
+              sseAux.close();
+              sseAux = null;
+            }
+          };
+        } catch (_) {}
+      }
+
+      async function pollAgents() {
+        let snapshot = null;
+        try {
+          const r = await fetch(BRIDGE_URL + '/api/agents', { cache: 'no-store' });
+          if (r.ok) snapshot = await r.json();
+        } catch (_) {}
+
+        if (!snapshot) {
+          try {
+            const r2 = await fetch('/api/agents-snapshot');
+            if (r2.ok) {
+              const d2 = await r2.json();
+              if ((Array.isArray(d2.projects) && d2.projects.length > 0) || (Array.isArray(d2.agents) && d2.agents.length > 0)) {
+                snapshot = d2;
+              }
+            }
+          } catch (_) {}
+        }
+
+        if (snapshot) {
+          offlineTicks = 0;
+          applyAuxSnapshot(snapshot);
+          if (!sseAux) connectAuxSSE();
+        } else {
+          offlineTicks++;
+          if (actors.size === 0 && offlineTicks >= 2) {
+            document.getElementById('sync-badge').textContent = 'WAIT';
+            applyAuxSnapshot({
+              version: '3.0.0',
+              projects: [
+                {
+                  projectName: 'Antigravity IDE ui',
+                  queues: [
+                    {
+                      conversationId: 'aux-standby',
+                      conversationTitle: '正在自动唤醒实时监控桥接...',
+                      projectName: 'Antigravity IDE ui',
+                      focused: true,
+                      leadAgent: {
+                        id: 'demo-standby',
+                        name: 'coordinator',
+                        isLead: true,
+                        state: 'sleeping',
+                        idleMs: 0,
+                        statusText: '💤 正在自动唤醒监控桥接...',
+                        pokemonSpecies: ''
+                      },
+                      subagents: []
+                    }
+                  ]
+                }
+              ]
+            });
+          }
+        }
+      }
+
+      function tickArena() {
+        if (autoWalk) {
+          const b = arenaEl.getBoundingClientRect();
+          const maxX = Math.max(30, (b.width || 300) - 110);
+          actors.forEach((rec) => {
+            if (rec.isHeld) return;
+            const st = rec.controller.getState();
+            if (st === 'working' || st === 'thinking') {
+              const v = rec.vx || 0.42;
+              rec.x += v * (st === 'working' ? 1.0 : 0.5);
+              if (rec.x <= 6) { rec.x = 6; rec.vx = Math.abs(v); }
+              else if (rec.x >= maxX) { rec.x = maxX; rec.vx = -Math.abs(v); }
+              rec.el.classList.toggle('face-left', rec.vx < 0);
+              rec.el.style.left = Math.round(rec.x) + 'px';
+            }
+          });
+        }
+        requestAnimationFrame(tickArena);
+      }
+
+      if (window.sidecar && typeof window.sidecar.onWorkspaceChange === 'function') {
+        window.sidecar.onWorkspaceChange((uris) => {
+          if (uris && uris.length > 0) {
+            const folder = decodeURIComponent(uris[0].split('/').filter(Boolean).pop() || 'workspace');
+            document.getElementById('ws-label').textContent = '📍 ' + folder;
+          }
+        });
+      }
+
+      window.PokemonQueueEngine = {
+        normalizeSnapshotQueues,
+        getRows: () => currentQueueRows,
+        showLeadSessionBanner,
+        focusLeadSession
+      };
+
+      try {
+        const saved = localStorage.getItem('pkmn_aux_theme');
+        if (saved) window.setTheme(saved, true);
+      } catch (_) {}
+
+      window.addEventListener('resize', () => window.lineupAuxActors(false));
+      syncStyleButton();
+      loadPack();
+      pollAgents();
+      connectAuxSSE();
+      setInterval(pollAgents, 750);
+      requestAnimationFrame(tickArena);
+    })();
+  </script>
+</body>
+</html>

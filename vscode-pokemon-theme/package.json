@@ -1,0 +1,196 @@
+{
+  "name": "vscode-pokemon-theme",
+  "displayName": "智能体桌宠与配色主题 (Agent Pets & Themes)",
+  "description": "把正在运行的 AI 智能体变成桌宠：IDE 侧栏与 Windows 桌面实时显示每个智能体的状态（思考中/工作中/休眠中），形象来自可替换的皮肤包，附带六套代码配色主题。",
+  "version": "1.0.0",
+  "publisher": "antigravity-pokemon",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Qin-long/antigravity-pets"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Themes",
+    "Other"
+  ],
+  "keywords": [
+    "antigravity",
+    "theme",
+    "desktop-pet",
+    "agent",
+    "skin-pack"
+  ],
+  "activationEvents": [
+    "*",
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "themes": [
+      {
+        "id": "agent-pets-volt-dark",
+        "label": "⚡ 电光黄 · 暗色",
+        "uiTheme": "vs-dark",
+        "path": "./themes/pikachu-volt-dark.json"
+      },
+      {
+        "id": "agent-pets-shadow-dark",
+        "label": "🟣 暗影紫 · 暗色",
+        "uiTheme": "vs-dark",
+        "path": "./themes/gengar-shadow-dark.json"
+      },
+      {
+        "id": "agent-pets-flame-dark",
+        "label": "🔥 烈焰橙 · 暗色",
+        "uiTheme": "vs-dark",
+        "path": "./themes/charizard-flame-dark.json"
+      },
+      {
+        "id": "agent-pets-moonlight-dark",
+        "label": "🌙 月夜黑 · 暗色",
+        "uiTheme": "vs-dark",
+        "path": "./themes/umbreon-moonlight-dark.json"
+      },
+      {
+        "id": "agent-pets-psychic-dark",
+        "label": "🔮 灵能紫 · 暗色",
+        "uiTheme": "vs-dark",
+        "path": "./themes/mewtwo-psystrike-dark.json"
+      },
+      {
+        "id": "agent-pets-daybreak-light",
+        "label": "☀️ 晨光 · 浅色",
+        "uiTheme": "vs",
+        "path": "./themes/pikachu-pokedex-light.json"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "pokemonPetContainer",
+          "title": "智能体桌宠 (Agent Pets)",
+          "icon": "./resources/pokeball-activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "pokemonPetContainer": [
+        {
+          "type": "webview",
+          "id": "pokemonPetSidebar",
+          "name": "⚡ 智能体桌宠"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "pokemonTheme.openPetArena",
+        "title": "⚡ 打开桌宠舞台（列队 / 抽卡 / 图鉴 / 设置）(Open Stage)",
+        "category": "Agent Pets"
+      },
+      {
+        "command": "pokemonTheme.switchTheme",
+        "title": "🎨 切换代码配色主题 (Switch Theme)",
+        "category": "Agent Pets"
+      },
+      {
+        "command": "pokemonTheme.launchDesktopPet",
+        "title": "🪟 召唤 Windows 桌面悬浮桌宠 (Launch Desktop Pet)",
+        "category": "Agent Pets"
+      },
+      {
+        "command": "pokemonTheme.startMonitorBridge",
+        "title": "🛰️ 启动智能体实时监控桥 (Start Agent Monitor Bridge)",
+        "category": "Agent Pets"
+      },
+      {
+        "command": "pokemonTheme.refreshAgents",
+        "title": "🔄 立即刷新智能体状态 (Refresh Live Agents)",
+        "category": "Agent Pets"
+      },
+      {
+        "command": "pokemonTheme.toggleSpriteStyle",
+        "title": "🎞️ 切换画风：高清 / 像素 (Toggle Sprite Style)",
+        "category": "Agent Pets"
+      },
+      {
+        "command": "pokemonTheme.applyGlobalSkin",
+        "title": "✨ 开启 Antigravity 全界面皮肤与队伍栏 (Apply Full UI Skin)",
+        "category": "Agent Pets"
+      },
+      {
+        "command": "pokemonTheme.restoreGlobalSkin",
+        "title": "♻️ 恢复 Antigravity 原始界面 (Restore Default UI)",
+        "category": "Agent Pets"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "pokemonTheme.openPetArena",
+          "when": "view == pokemonPetSidebar",
+          "group": "navigation@1"
+        },
+        {
+          "command": "pokemonTheme.switchTheme",
+          "when": "view == pokemonPetSidebar",
+          "group": "navigation@2"
+        },
+        {
+          "command": "pokemonTheme.launchDesktopPet",
+          "when": "view == pokemonPetSidebar",
+          "group": "navigation@3"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "智能体桌宠 (Agent Pets)",
+      "properties": {
+        "pokemonTheme.bridgeUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:17580",
+          "description": "智能体实时状态监控桥接服务地址 (bridge/agent-monitor.mjs)"
+        },
+        "pokemonTheme.pollIntervalMs": {
+          "type": "number",
+          "default": 800,
+          "minimum": 400,
+          "maximum": 30000,
+          "description": "智能体实时状态轮询间隔（毫秒）"
+        },
+        "pokemonTheme.suiteRoot": {
+          "type": "string",
+          "default": "",
+          "description": "可选：Antigravity IDE ui 套件根目录路径（留空则自动探测）"
+        },
+        "pokemonTheme.autoSummonDesktopPetOnStartup": {
+          "type": "boolean",
+          "default": true,
+          "description": "启动 Antigravity IDE 时自动启动监控桥并召唤桌面悬浮桌宠"
+        },
+        "pokemonTheme.bindDesktopPetToIdeLifecycle": {
+          "type": "boolean",
+          "default": true,
+          "description": "将桌面悬浮宠与 Antigravity IDE 进程生命周期绑定（关闭 IDE 后自动退出桌宠）"
+        },
+        "pokemonTheme.spriteStyle": {
+          "type": "string",
+          "enum": [
+            "authentic-showdown",
+            "authentic-pixel"
+          ],
+          "default": "authentic-showdown",
+          "description": "默认画风：authentic-showdown（皮肤包的主画风，通常是高清动图）或 authentic-pixel（像素画风，皮肤包提供时）"
+        },
+        "pokemonTheme.useOnlineSprites": {
+          "type": "boolean",
+          "default": true,
+          "description": "使用皮肤包里的动图形象（关闭后改用内置的矢量占位形象）"
+        }
+      }
+    }
+  }
+}

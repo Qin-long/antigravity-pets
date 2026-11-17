@@ -1,0 +1,62 @@
+# ---- Dependencies (this project has zero npm runtime deps) ----
+node_modules/
+package-lock.json
+npm-debug.log*
+
+# ---- Logs & temp ----
+*.log
+*.tmp
+*.temp
+logs/
+scratch/
+tmp/
+
+# ---- Backups created when patching the Antigravity client ----
+*.pokemon-backup
+*.pokemon-new
+*.pokemon-old
+*.bak
+*.orig
+
+# ---- Locally generated config (written by sync-plugin.ps1 into the install target) ----
+plugin-bundle/pokemon-agent-pets/workspace-config.json
+
+# ---- Build artifacts ----
+*.vsix
+*.asar
+dist/
+out/
+
+# ---- Local runtime state ----
+*.db
+*.db-journal
+*.jsonl
+pokemon-hook-state.json
+
+# ---- OS files ----
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+._*
+
+# ---- Editors / IDEs ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.history/
+
+# ---- Env / secrets ----
+.env
+.env.*
+
+# ---- Local AI-agent workspace rules & skills (kept locally, not published) ----
+GEMINI.md
+AGENTS.md
+.agent/
+.agents/
+_agent/
+_agents/

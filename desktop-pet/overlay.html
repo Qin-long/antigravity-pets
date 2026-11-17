@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="mewtwo">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>桌宠舞台</title>
+<style>
+  :root {
+    --bg: #120f1a; --bg2: #1a1326; --panel: #1a1624; --panel2: #221c30; --line: rgba(255,255,255,.08);
+    --text: #f4f1fa; --muted: #a59fb8; --faint: #6f6884; --accent: #d8b4fe; --accent2: #7dd3fc;
+    --ok: #4ade80; --warn: #fbbf24; --bad: #f87171; --think: #a78bfa; --party: #f472b6;
+    --r-N: #94a3b8; --r-R: #38bdf8; --r-SR: #c084fc; --r-SSR: #fbbf24; --shiny: #fde047;
+    --shadow: 0 10px 30px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+  :root[data-theme="pikachu"]   { --bg:#13120c; --bg2:#1d1a0e; --panel:#1c1a11; --panel2:#252214; --accent:#fde047; --accent2:#fb923c; --muted:#b3ac93; --faint:#77705a; --text:#fbf8ec; }
+  :root[data-theme="gengar"]    { --bg:#120e1b; --bg2:#1c1230; --panel:#1b1528; --panel2:#241c36; --accent:#c4b5fd; --accent2:#f472b6; --muted:#a39cba; --faint:#6c6585; --text:#f3f0fb; }
+  :root[data-theme="charizard"] { --bg:#150f0b; --bg2:#22140b; --panel:#1f1610; --panel2:#2a1e15; --accent:#fdba74; --accent2:#5eead4; --muted:#b5a496; --faint:#7a6b5e; --text:#fbf4ee; }
+  :root[data-theme="umbreon"]   { --bg:#0c0f15; --bg2:#111827; --panel:#131924; --panel2:#1a2230; --accent:#fde68a; --accent2:#93c5fd; --muted:#97a1b3; --faint:#5f6878; --text:#eef2f7; }
+  :root[data-theme="pokedex-light"] {
+    --bg:#f5f6f9; --bg2:#eceff5; --panel:#ffffff; --panel2:#f4f6fa; --line: rgba(15,23,42,.10);
+    --text:#0f172a; --muted:#64748b; --faint:#94a3b8; --accent:#dc2626; --accent2:#0284c7;
+    --shadow: 0 10px 30px rgba(15,23,42,.10); color-scheme: light;
+  }
+  * {
+    box-sizing: border-box;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.22) transparent;
+  }
+  :root[data-theme="pokedex-light"] * {
+    scrollbar-color: rgba(15, 23, 42, 0.22) transparent;
+  }
+  *::-webkit-scrollbar { width: 4px; height: 4px; }
+  *::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.22); border-radius: 999px; }
+  *::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.55); }
+  :root[data-theme="pokedex-light"] *::-webkit-scrollbar-thumb { background: rgba(15, 23, 42, 0.22); }
+  :root[data-theme="pokedex-light"] *::-webkit-scrollbar-thumb:hover { background: rgba(15, 23, 42, 0.55); }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(1200px 600px at 70% -10%, var(--bg2), transparent 60%), var(--bg);
+    color: var(--text);
+    font: 14px/1.5 "Segoe UI", "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, select, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+
+  /* ---------- top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    padding: 12px 24px; background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(14px); border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .ball {
+    width: 26px; height: 26px; border-radius: 50%; flex: none; position: relative;
+    background: linear-gradient(#ef4444 0 46%, #1f2937 46% 54%, #f8fafc 54%);
+    box-shadow: inset 0 0 0 2px #1f2937;
+  }
+  .ball::after { content: ""; position: absolute; inset: 8px; border-radius: 50%; background: #f8fafc; box-shadow: 0 0 0 2px #1f2937; }
+  .brand h1 { font-size: 16px; margin: 0; font-weight: 650; letter-spacing: .2px; }
+  .brand p { margin: 0; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .conn { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--bad); margin-right: 6px; vertical-align: 1px; }
+  .conn.on { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
+
+  .tabs { display: flex; gap: 2px; padding: 3px; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .tab { border: 0; background: transparent; padding: 5px 14px; border-radius: 7px; color: var(--muted); font-size: 13px; }
+  .tab:hover { color: var(--text); }
+  .tab[aria-selected="true"] { background: var(--panel2); color: var(--text); box-shadow: 0 1px 0 var(--line); }
+
+  .tools { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .swatches { display: flex; gap: 6px; }
+  .sw { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; padding: 0; outline-offset: 2px; }
+  .sw[aria-pressed="true"] { border-color: var(--text); }
+  .btn {
+    border: 1px solid var(--line); background: var(--panel); padding: 6px 12px; border-radius: 8px;
+    font-size: 13px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  }
+  .btn:hover { background: var(--panel2); }
+  .btn.primary { background: var(--accent); color: #111; border-color: transparent; font-weight: 600; }
+  :root[data-theme="pokedex-light"] .btn.primary { color: #fff; }
+  .btn.primary:hover { filter: brightness(1.06); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; background: var(--panel); padding: 5px 10px; font-size: 12px; color: var(--muted); }
+  .seg button[aria-pressed="true"] { background: var(--panel2); color: var(--text); }
+
+  main { padding: 20px 24px 40px; max-width: 1400px; margin: 0 auto; }
+  .view[hidden] { display: none !important; }
+
+  /* ---------- stage ---------- */
+  .stage { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+  .stats { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  .chip b { color: var(--text); font-weight: 600; }
+  .chip i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+
+  .project { margin-bottom: 22px; }
+  .project > h2 { font-size: 12px; font-weight: 600; color: var(--muted); margin: 0 0 8px 2px; letter-spacing: .3px; }
+  .lane {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px 14px;
+    margin-bottom: 10px; box-shadow: var(--shadow);
+  }
+  .lane-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; min-width: 0; }
+  .lane-title { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .lane-sub { color: var(--faint); font-size: 12px; white-space: nowrap; }
+  .lane-head .btn { margin-left: auto; padding: 4px 10px; font-size: 12px; }
+  .party { display: flex; gap: 6px; overflow-x: auto; padding: 4px 2px 2px; scrollbar-width: thin; }
+  #lanes.is-compact-queues {
+    max-height: min(640px, calc(100vh - 140px));
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+  }
+  #lanes.is-compact-queues .project { margin-bottom: 12px; }
+  #lanes.is-compact-queues .project > h2 { margin-bottom: 5px; }
+  #lanes.is-compact-queues .lane { padding: 8px 12px 10px; margin-bottom: 7px; border-radius: 13px; }
+  #lanes.is-compact-queues .lane-head { margin-bottom: 2px; }
+  #lanes.is-compact-queues .mon { padding: 26px 5px 6px; width: 122px; }
+
+  .mon {
+    position: relative; width: 132px; flex: none; text-align: center; padding: 34px 6px 8px;
+    border-radius: 14px; cursor: pointer; user-select: none; transition: background .15s;
+  }
+  .mon:hover { background: var(--panel2); }
+  .bubble {
+    position: absolute; top: 4px; left: 50%; transform: translateX(-50%); max-width: 126px;
+    font-size: 11px; padding: 2px 8px; border-radius: 8px; background: var(--panel2); border: 1px solid var(--line);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text);
+    opacity: 0; transition: opacity .2s;
+  }
+  .mon.has-bubble .bubble { opacity: 1; }
+  .ring { position: relative; width: 104px; height: 104px; margin: 0 auto; }
+  .ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+  .ring circle { fill: none; stroke-linecap: round; transition: stroke-dasharray .6s ease; }
+  .ring .trk { stroke: var(--line); }
+  .ring .ctx { stroke: var(--bad); stroke-width: 4; }
+  .ring .ctx.warm { stroke: #fb923c; }
+  .ring .ctx.hot { stroke: #ef4444; }
+  .ring .hit { stroke: var(--ok); stroke-width: 3.4; }
+  .disc { position: absolute; inset: 17px; border-radius: 50%; background: radial-gradient(circle at 50% 40%, var(--panel2), transparent 72%); }
+  .aura { position: absolute; inset: 14px; border-radius: 50%; opacity: 0; transition: opacity .3s; }
+  .mon.st-working .aura { opacity: 1; background: radial-gradient(circle, color-mix(in srgb, var(--warn) 30%, transparent), transparent 70%); animation: pulse 1.1s ease-in-out infinite; }
+  .mon.st-thinking .aura { opacity: 1; background: radial-gradient(circle, color-mix(in srgb, var(--think) 30%, transparent), transparent 70%); animation: pulse 2s ease-in-out infinite; }
+  .mon.st-error .aura { opacity: 1; background: radial-gradient(circle, color-mix(in srgb, var(--bad) 30%, transparent), transparent 70%); }
+  .mon.st-celebrating .aura { opacity: 1; background: radial-gradient(circle, color-mix(in srgb, var(--party) 30%, transparent), transparent 70%); }
+  .sprite-box { position: absolute; inset: 18px; display: grid; place-items: center; }
+  .sprite { max-width: 68px; max-height: 68px; image-rendering: auto; transform-origin: 50% 80%; }
+  .pixel .sprite { image-rendering: pixelated; }
+  .mon.st-working .sprite { animation: hop .55s ease-in-out infinite; }
+  .mon.st-thinking .sprite { animation: sway 2.4s ease-in-out infinite; }
+  .mon.st-sleeping .sprite { animation: breathe 3.2s ease-in-out infinite; opacity: .88; }
+  .mon.st-celebrating .sprite { animation: hop .4s ease-in-out infinite; }
+  .mon.st-error .sprite { animation: shake .5s ease-in-out infinite; }
+  .crown { position: absolute; left: 6px; top: 4px; width: 22px; height: 22px; border-radius: 50%; display: none; place-items: center; background: var(--panel); border: 1px solid #fde68a; color: #fde68a; font-size: 12px; }
+  .mon.lead .crown { display: grid; }
+  .spark { position: absolute; right: 6px; top: 2px; color: var(--shiny); font-size: 15px; display: none; text-shadow: 0 0 8px var(--shiny); }
+  .mon.shiny .spark { display: block; animation: twinkle 1.6s ease-in-out infinite; }
+  .dot { position: absolute; right: 13px; bottom: 13px; width: 13px; height: 13px; border-radius: 50%; background: var(--faint); box-shadow: 0 0 0 3px var(--panel); }
+  .mon:hover .dot { box-shadow: 0 0 0 3px var(--panel2); }
+  .mon.st-working .dot { background: var(--warn); }
+  .mon.st-thinking .dot { background: var(--think); }
+  .mon.st-error .dot { background: var(--bad); }
+  .mon.st-celebrating .dot { background: var(--party); }
+  .mon .name { margin-top: 6px; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mon.lead .name { color: var(--accent); }
+  .mon .meta { font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .meta .c { color: var(--bad); font-weight: 600; }
+  .meta .h { color: var(--ok); font-weight: 600; }
+  :root[data-theme="pokedex-light"] .meta .c { color: #dc2626; }
+  :root[data-theme="pokedex-light"] .meta .h { color: #16a34a; }
+  .mon .rar { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; }
+
+  .empty { padding: 48px 20px; text-align: center; color: var(--muted); background: var(--panel); border: 1px dashed var(--line); border-radius: 16px; }
+
+  .side { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px; box-shadow: var(--shadow); }
+  .card h3 { margin: 0 0 10px; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+  .card h3 small { color: var(--faint); font-weight: 400; }
+  .progress { height: 6px; border-radius: 99px; background: var(--panel2); overflow: hidden; margin: 6px 0 4px; }
+  .progress > i { display: block; height: 100%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius: inherit; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .row-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .row-actions .btn { flex: 1; justify-content: center; }
+  .draw-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+  .draw-list li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 10px; background: var(--panel2); }
+  .draw-list img { width: 34px; height: 34px; object-fit: contain; }
+  .draw-list .t { min-width: 0; flex: 1; }
+  .draw-list .t b { display: block; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .draw-list .t span { font-size: 11px; color: var(--faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .tag { font-size: 11px; padding: 1px 7px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap; }
+  .tag.shiny { color: var(--shiny); }
+
+  /* ---------- Pokédex ---------- */
+  .section-head { display: flex; align-items: baseline; gap: 12px; margin: 0 0 14px; flex-wrap: wrap; }
+  .section-head h2 { font-size: 18px; margin: 0; font-weight: 650; }
+  .dex { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+  .dex-card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 14px; position: relative; overflow: hidden; }
+  .dex-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--rc); opacity: .9; }
+  .dex-art { height: 120px; display: grid; place-items: center; border-radius: 12px; background: radial-gradient(circle at 50% 60%, color-mix(in srgb, var(--rc) 16%, transparent), transparent 70%); }
+  .dex-art img { max-height: 100px; max-width: 120px; }
+  .dex-card.locked .dex-art img { filter: brightness(0) opacity(.35); }
+  :root[data-theme="pokedex-light"] .dex-card.locked .dex-art img { filter: brightness(0) opacity(.18); }
+  .dex-name { display: flex; align-items: baseline; gap: 8px; margin-top: 10px; }
+  .dex-name b { font-size: 15px; }
+  .dex-name span { color: var(--faint); font-size: 12px; }
+  .stars { color: var(--rc); letter-spacing: 1px; font-size: 12px; }
+  .dex-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .dex-card .shiny-toggle { position: absolute; right: 10px; top: 12px; border: 1px solid var(--line); background: var(--panel2); color: var(--shiny); border-radius: 8px; padding: 1px 8px; font-size: 12px; }
+  .pool { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* ---------- history / settings ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; }
+  td img { width: 36px; height: 36px; object-fit: contain; vertical-align: middle; }
+  .settings { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .field { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .field:last-child { border-bottom: 0; }
+  .field label { font-size: 13px; }
+  .field small { display: block; color: var(--faint); font-size: 11px; }
+  select { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; }
+  .switch { position: relative; width: 38px; height: 22px; flex: none; }
+  .switch input { opacity: 0; width: 100%; height: 100%; margin: 0; position: absolute; cursor: pointer; z-index: 1; }
+  .switch span { position: absolute; inset: 0; border-radius: 99px; background: var(--panel2); border: 1px solid var(--line); transition: .2s; }
+  .switch span::after { content: ""; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px; border-radius: 50%; background: var(--muted); transition: .2s; }
+  .switch input:checked + span { background: var(--accent); border-color: transparent; }
+  .switch input:checked + span::after { transform: translateX(16px); background: #fff; }
+  .danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+  .scroll-x { overflow-x: auto; }
+
+  /* ---------- gacha reveal ---------- */
+  .reveal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background: rgba(6,4,12,.72); backdrop-filter: blur(6px); }
+  .reveal[hidden] { display: none; }
+  .reveal .stage-r { position: relative; width: min(420px, 92vw); height: 520px; display: grid; place-items: center; }
+  .rays { position: absolute; width: 640px; height: 640px; border-radius: 50%; opacity: 0;
+    background: repeating-conic-gradient(from 0deg, color-mix(in srgb, var(--rc) 55%, transparent) 0 8deg, transparent 8deg 22deg);
+    mask: radial-gradient(circle, #000 18%, transparent 62%); -webkit-mask: radial-gradient(circle, #000 18%, transparent 62%); }
+  .reveal.show-card .rays { opacity: .9; animation: spin 14s linear infinite, fadein .5s ease; }
+  .flash { position: absolute; inset: -40vmax; border-radius: 50%; background: radial-gradient(circle, #fff 0, var(--rc) 18%, transparent 45%); opacity: 0; pointer-events: none; }
+  .reveal.burst .flash { animation: flash .7s ease-out forwards; }
+  .pball { position: absolute; width: 96px; height: 96px; border-radius: 50%;
+    background: linear-gradient(#fb7185, #dc2626 45%, #1f2937 45% 55%, #f8fafc 55%, #cbd5e1);
+    box-shadow: inset 0 0 0 4px #1f2937, 0 18px 30px rgba(0,0,0,.45); }
+  .pball::after { content: ""; position: absolute; left: 50%; top: 50%; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%; background: #f8fafc; box-shadow: 0 0 0 5px #1f2937; }
+  .reveal.dropping .pball { animation: drop .55s cubic-bezier(.3,1.4,.6,1) both; }
+  .reveal.wobbling .pball { animation: wobble 1.6s ease-in-out both; }
+  .reveal.wobbling.rare .pball::after { animation: glow 1.6s ease-in both; }
+  .reveal.burst .pball, .reveal.show-card .pball { animation: pop .35s ease-in forwards; }
+  .rcard { position: relative; text-align: center; opacity: 0; transform: translateY(16px) scale(.92); }
+  .reveal.show-card .rcard { opacity: 1; transform: none; transition: all .45s cubic-bezier(.2,1.3,.4,1); }
+  .rcard .big { width: 200px; height: 200px; display: grid; place-items: center; margin: 0 auto; }
+  .rcard .big img { width: 168px; height: 168px; object-fit: contain; }
+  .rcard .big { filter: drop-shadow(0 12px 24px rgba(0,0,0,.45)); }
+  .reveal.pixel .rcard .big img { image-rendering: pixelated; }
+  .rcard .r-label { display: inline-flex; gap: 8px; align-items: center; margin-top: 8px; padding: 3px 12px; border-radius: 99px; background: color-mix(in srgb, var(--rc) 22%, transparent); color: var(--rc); font-weight: 600; font-size: 13px; }
+  .rcard h2 { font-size: 28px; margin: 10px 0 2px; color: #fff; letter-spacing: 1px; }
+  .rcard .who { color: #cbd5e1; font-size: 13px; }
+  .rcard .badges { display: flex; gap: 8px; justify-content: center; margin-top: 10px; min-height: 24px; }
+  .rcard .badge { font-size: 12px; font-weight: 700; padding: 2px 10px; border-radius: 99px; }
+  .badge.new { background: #22c55e; color: #052e16; }
+  .badge.shiny { background: var(--shiny); color: #422006; }
+  .reveal .hint { position: absolute; bottom: 18px; left: 0; right: 0; text-align: center; color: #94a3b8; font-size: 12px; }
+  .sparkle { position: absolute; color: var(--shiny); pointer-events: none; text-shadow: 0 0 10px var(--shiny); animation: sparkle 1.4s ease-out forwards; }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); opacity: 0; background: var(--panel2); border: 1px solid var(--line); padding: 8px 14px; border-radius: 10px; font-size: 13px; transition: .25s; z-index: 120; box-shadow: var(--shadow); }
+  .toast.show { opacity: 1; transform: translateX(-50%); }
+
+  @keyframes hop { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-6px) } }
+  @keyframes sway { 0%,100% { transform: rotate(-3deg) } 50% { transform: rotate(3deg) translateY(-2px) } }
+  @keyframes breathe { 0%,100% { transform: scale(1, 1) } 50% { transform: scale(1.02, .97) } }
+  @keyframes shake { 0%,100% { transform: translateX(0) } 25% { transform: translateX(-2px) } 75% { transform: translateX(2px) } }
+  @keyframes pulse { 0%,100% { transform: scale(.94) } 50% { transform: scale(1.04) } }
+  @keyframes twinkle { 0%,100% { opacity: .55; transform: scale(.85) } 50% { opacity: 1; transform: scale(1.1) } }
+  @keyframes spin { to { transform: rotate(360deg) } }
+  @keyframes fadein { from { opacity: 0 } }
+  @keyframes drop { from { transform: translateY(-60vh) } to { transform: translateY(0) } }
+  @keyframes wobble { 0%,32%,40%,66%,74%,100% { transform: rotate(0) } 8% { transform: rotate(-20deg) } 18% { transform: rotate(16deg) } 46% { transform: rotate(-20deg) } 56% { transform: rotate(16deg) } 80% { transform: rotate(-20deg) } 90% { transform: rotate(16deg) } }
+  @keyframes glow { 0%,60% { background: #f8fafc } 100% { background: var(--rc); box-shadow: 0 0 0 5px #1f2937, 0 0 24px 6px var(--rc) } }
+  @keyframes pop { to { transform: scale(1.6); opacity: 0 } }
+  @keyframes flash { 0% { opacity: 0 } 25% { opacity: 1 } 100% { opacity: 0 } }
+  @keyframes sparkle { from { opacity: 1; transform: translate(0,0) scale(.6) } to { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.2) } }
+
+  @media (max-width: 960px) {
+    .stage, .settings { grid-template-columns: 1fr; }
+    .side { position: static; }
+    .topbar { padding: 10px 16px; gap: 12px; }
+    main { padding: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="ball" aria-hidden="true"></span>
+    <div>
+      <h1>桌宠舞台</h1>
+      <p><span class="conn" id="conn"></span><span id="subline">正在连接状态桥…</span></p>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="stage" aria-selected="true">舞台</button>
+    <button class="tab" role="tab" data-tab="dex" aria-selected="false">图鉴</button>
+    <button class="tab" role="tab" data-tab="history" aria-selected="false">抽卡记录</button>
+    <button class="tab" role="tab" data-tab="settings" aria-selected="false">设置</button>
+  </nav>
+  <div class="tools">
+    <div class="swatches" id="swatches" aria-label="主题"></div>
+    <div class="seg" id="styleSeg" aria-label="动图风格">
+    </div>
+    <button class="btn" id="summonBtn" title="在桌面顶部重新显示置顶浮窗">显示桌面浮窗</button>
+  </div>
+</header>
+
+<noscript>
+  <div style="margin:16px 24px;padding:14px 16px;border-radius:12px;background:#3b1d1d;border:1px solid #f87171;color:#fecaca;font-size:14px;line-height:1.6">
+    舞台脚本被禁用，所以无法连接、按钮也不会响应。<br/>
+    这通常是 Antigravity 里运行的还是旧版桌宠扩展：请按 <b>Ctrl+Shift+P</b> 执行
+    <b>Developer: Reload Window</b>（或 <b>Developer: Restart Extension Host</b>），然后重新打开舞台。
+  </div>
+</noscript>
+<main>
+  <!-- Stage -->
+  <section class="view" id="view-stage">
+    <div class="stage">
+      <div>
+        <div class="stats" id="stats"></div>
+        <div id="lanes"></div>
+      </div>
+      <aside class="side">
+        <div class="card">
+          <h3>图鉴进度 <small id="dexCount">0 / 7</small></h3>
+          <div class="progress"><i id="dexBar" style="width:0%"></i></div>
+          <div class="muted" id="dexLine">新智能体出现时会自动抽一只伙伴作为搭档</div>
+          <div class="row-actions">
+            <button class="btn primary" id="pullBtn">试抽一次</button>
+            <button class="btn" id="spawnBtn" title="召唤一个模拟子智能体，它会触发一次抽卡">召唤测试队员</button>
+          </div>
+        </div>
+        <div class="card">
+          <h3>最近抽卡 <small><a href="#" data-goto="history" style="color:inherit">全部</a></small></h3>
+          <ul class="draw-list" id="recentDraws"><li class="muted">还没有抽卡记录</li></ul>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Pokédex -->
+  <section class="view" id="view-dex" hidden>
+    <div class="section-head">
+      <h2>图鉴</h2>
+      <span class="muted" id="dexSummary"></span>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <h3>卡池概率 <small id="shinyRateLine"></small></h3>
+      <div class="pool" id="pool"></div>
+    </div>
+    <div class="dex" id="dexGrid"></div>
+  </section>
+
+  <!-- History -->
+  <section class="view" id="view-history" hidden>
+    <div class="section-head"><h2>抽卡记录</h2><span class="muted">最近 40 次</span></div>
+    <div class="card scroll-x">
+      <table>
+        <thead><tr><th></th><th>伙伴</th><th>稀有度</th><th>搭档</th><th>会话</th><th>时间</th></tr></thead>
+        <tbody id="historyBody"><tr><td colspan="6" class="muted">还没有抽卡记录</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Settings -->
+  <section class="view" id="view-settings" hidden>
+    <div class="section-head"><h2>设置</h2><span class="muted">保存在本机 ~/.gemini/antigravity/pokemon-collection.json</span></div>
+    <div class="settings">
+      <div class="card">
+        <h3>抽卡</h3>
+        <div class="field">
+          <label for="setPack">皮肤包<small id="packInfo">决定卡池、名字和形象图</small></label>
+          <select id="setPack"></select>
+        </div>
+        <div class="field">
+          <label for="setEnabled">新智能体自动抽卡<small>关闭后使用固定的默认搭档</small></label>
+          <span class="switch"><input type="checkbox" id="setEnabled" /><span></span></span>
+        </div>
+        <div class="field">
+          <label for="setAnim">播放揭晓动画<small>浮窗和舞台里的抽卡揭晓动画</small></label>
+          <span class="switch"><input type="checkbox" id="setAnim" /><span></span></span>
+        </div>
+        <div class="field">
+          <label for="setShiny">闪光概率<small>每次抽卡独立判定</small></label>
+          <select id="setShiny"></select>
+        </div>
+        <div class="field">
+          <label for="setLeadMode">会话领队<small>领队也可以固定为某只伙伴</small></label>
+          <select id="setLeadMode">
+            <option value="gacha">参与抽卡</option>
+            <option value="fixed">固定</option>
+          </select>
+        </div>
+        <div class="field" id="leadSpeciesField">
+          <label for="setLeadSpecies">固定领队伙伴</label>
+          <select id="setLeadSpecies"></select>
+        </div>
+        <div class="field">
+          <label>重置图鉴<small>清空当前皮肤包的抽卡记录和搭档绑定</small></label>
+          <button class="btn danger" id="resetBtn">重置</button>
+        </div>
+      </div>
+      <div class="card scroll-x">
+        <h3>搭档管理 <small>只能换成图鉴里已经抽到过的伙伴</small></h3>
+        <table>
+          <thead><tr><th></th><th>智能体</th><th>会话</th><th>搭档</th><th></th></tr></thead>
+          <tbody id="rosterBody"><tr><td colspan="5" class="muted">暂无搭档</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="reveal" id="reveal" hidden>
+  <div class="stage-r">
+    <div class="flash"></div>
+    <div class="rays"></div>
+    <div class="pball"></div>
+    <div class="rcard">
+      <div class="big"><img id="rImg" alt="" /></div>
+      <div class="r-label" id="rLabel"></div>
+      <h2 id="rName"></h2>
+      <div class="who" id="rWho"></div>
+      <div class="badges" id="rBadges"></div>
+    </div>
+  </div>
+  <div class="hint">点击任意处继续</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // Served by a bridge (any port) -> talk to that bridge; opened as a file -> the default bridge.
+  var BRIDGE = (location.protocol.indexOf('http') === 0 && location.pathname.indexOf('/static/') === 0) ? location.origin : 'http://127.0.0.1:17580';
+  // Creatures, names, sprites and shiny looks all come from the active skin pack (GET /api/pack).
+  var PACK = null;
+  var RARITY = { N: { label: '普通', stars: 1 }, R: { label: '稀有', stars: 2 }, SR: { label: '超稀有', stars: 3 }, SSR: { label: '传说', stars: 4 } };
+  var THEMES = [
+    { id: 'mewtwo', label: '灵能紫', color: '#d8b4fe' },
+    { id: 'pikachu', label: '电光黄', color: '#fde047' },
+    { id: 'gengar', label: '暗影紫', color: '#a78bfa' },
+    { id: 'charizard', label: '烈焰橙', color: '#fb923c' },
+    { id: 'umbreon', label: '月夜黑', color: '#fde68a' },
+    { id: 'pokedex-light', label: '晨光浅色', color: '#f1f5f9' }
+  ];
+  var STATE_LABEL = { working: '工作中', thinking: '思考中', sleeping: '待命', celebrating: '欢呼', error: '异常' };
+  var RING_OUT = 2 * Math.PI * 46, RING_IN = 2 * Math.PI * 39;
+
+  var state = {
+    snapshot: null,
+    collection: null,
+    style: readPref('pkmn-stage-style', 'showdown'),
+    seenSeqs: {},
+    primed: false,
+    revealQueue: [],
+    revealing: false,
+    monEls: new Map()
+  };
+
+  function readPref(k, d) { try { return localStorage.getItem(k) || d; } catch (e) { return d; } }
+  function writePref(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function creature(sp) { return (PACK && PACK.byId[sp]) || null; }
+  function zh(sp) { var c = creature(sp); return c ? c.name : (sp || '？'); }
+  function stars(r) { var n = (RARITY[r] && RARITY[r].stars) || 1; return new Array(n + 1).join('★'); }
+  function rc(r) { return 'var(--r-' + (RARITY[r] ? r : 'N') + ')'; }
+  function fmtTime(iso) {
+    if (!iso) return '';
+    var d = new Date(iso); var now = new Date();
+    var hm = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    return d.toDateString() === now.toDateString() ? hm : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + hm;
+  }
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('show'); }, 2200);
+  }
+
+  // ---------- sprites ----------
+  function styleOf(style) {
+    style = style || state.style;
+    if (!PACK) return style;
+    return PACK.styleById[style] ? style : PACK.defaultStyle;
+  }
+  function assetsOf(sp, style) {
+    var c = creature(sp);
+    return c ? (c.assets[styleOf(style)] || c.assets[PACK.defaultStyle] || {}) : {};
+  }
+  // Shiny look, best first: real shiny art from the pack -> the pack's recolour (CSS approximation on the web).
+  function spriteSrc(sp, shiny, style) {
+    var c = creature(sp); if (!c) return '';
+    var a = assetsOf(sp, style);
+    var url = (shiny && a.shinyGif) || a.gif || (a.frameUrls && a.frameUrls[0]) || c.artwork || '';
+    return url ? BRIDGE + url : '';
+  }
+  function spriteFilter(sp, shiny, style) {
+    var c = creature(sp);
+    if (!shiny || !c) return '';
+    return assetsOf(sp, style).shinyGif ? '' : (c.shiny && c.shiny.cssFilter) || '';
+  }
+  function setSprite(img, sp, shiny, style) {
+    var src = spriteSrc(sp, shiny, style);
+    if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+    img.style.filter = spriteFilter(sp, shiny, style);
+    img.alt = zh(sp);
+  }
+  function loadPack() {
+    return fetch(BRIDGE + '/api/pack', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (p) {
+      if (!p || !p.ok) { PACK = null; $('subline').textContent = '没有可用的皮肤包：请先安装一个（见 README「皮肤包」）'; return; }
+      p.byId = {}; p.creatures.forEach(function (c) { p.byId[c.id] = c; });
+      p.styleById = {}; p.styles.forEach(function (st) { p.styleById[st.id] = st; });
+      PACK = p;
+      buildStyleSeg();
+      applyStyle(state.style);
+      state.monEls.forEach(function (el) { el._sp = null; });
+      if (state.snapshot) renderStage(state.snapshot);
+    }).catch(function () {});
+  }
+  function buildStyleSeg() {
+    var seg = $('styleSeg');
+    seg.replaceChildren();
+    PACK.styles.forEach(function (st) {
+      var b = document.createElement('button');
+      b.dataset.style = st.id; b.textContent = st.label;
+      b.addEventListener('click', function () { applyStyle(st.id); });
+      seg.appendChild(b);
+    });
+    seg.hidden = PACK.styles.length < 2;
+  }
+  function loadPackList() {
+    return fetch(BRIDGE + '/api/packs', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (res) {
+      if (!res || !res.ok) return;
+      var sel = $('setPack');
+      sel.replaceChildren();
+      res.packs.forEach(function (p) {
+        var o = document.createElement('option');
+        o.value = p.id; o.textContent = p.name + ' · ' + p.creatureCount + ' 只';
+        o.selected = p.id === res.active;
+        sel.appendChild(o);
+      });
+      var cur = res.packs.filter(function (p) { return p.active; })[0];
+      $('packInfo').textContent = cur ? [cur.version && 'v' + cur.version, cur.source === 'user' ? '本机安装' : cur.source === 'builtin' ? '内置' : '', cur.license].filter(Boolean).join(' · ') : '';
+      $('packInfo').title = cur ? (cur.description || '') : '';
+    }).catch(function () {});
+  }
+
+  // ---------- theme / style ----------
+  function applyTheme(id, push) {
+    if (id === 'rotom-light' || id === 'rotom') id = 'pokedex-light';
+    if (!THEMES.some(function (t) { return t.id === id; })) id = 'mewtwo';
+    document.documentElement.setAttribute('data-theme', id);
+    Array.prototype.forEach.call(document.querySelectorAll('.sw'), function (b) { b.setAttribute('aria-pressed', String(b.dataset.theme === id)); });
+    if (push) {
+      fetch(BRIDGE + '/api/theme', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ theme: id === 'pokedex-light' ? 'rotom-light' : id, source: 'web-stage' }) }).catch(function () {});
+    }
+  }
+  function buildSwatches() {
+    var box = $('swatches');
+    THEMES.forEach(function (t) {
+      var b = document.createElement('button');
+      b.className = 'sw'; b.dataset.theme = t.id; b.title = t.label; b.style.background = t.color;
+      b.setAttribute('aria-label', '主题：' + t.label);
+      b.addEventListener('click', function () { applyTheme(t.id, true); });
+      box.appendChild(b);
+    });
+  }
+  function applyStyle(style) {
+    state.style = PACK ? styleOf(style) : (style || 'showdown');
+    writePref('pkmn-stage-style', state.style);
+    var stInfo = PACK && PACK.styleById[state.style];
+    document.body.classList.toggle('pixel', !!(stInfo ? stInfo.pixelated : state.style === 'pixel'));
+    Array.prototype.forEach.call(document.querySelectorAll('#styleSeg button'), function (b) { b.setAttribute('aria-pressed', String(b.dataset.style === state.style)); });
+    state.monEls.forEach(function (el) { setSprite(el._img, el._sp, el._shiny); });
+    renderCollection();
+  }
+
+  // ---------- tabs ----------
+  function showTab(name) {
+    Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) { t.setAttribute('aria-selected', String(t.dataset.tab === name)); });
+    ['stage', 'dex', 'history', 'settings'].forEach(function (v) { $('view-' + v).hidden = v !== name; });
+    writePref('pkmn-stage-tab', name);
+    if (name !== 'stage') loadCollection();
+  }
+
+  // ---------- stage rendering ----------
+  function monElement(m) {
+    var el = document.createElement('div');
+    el.className = 'mon';
+    el.innerHTML =
+      '<div class="bubble"></div>' +
+      '<div class="ring">' +
+        '<svg viewBox="0 0 104 104"><circle class="trk" cx="52" cy="52" r="46" stroke-width="4"/><circle class="ctx" cx="52" cy="52" r="46"/>' +
+        '<circle class="trk" cx="52" cy="52" r="39" stroke-width="3.4"/><circle class="hit" cx="52" cy="52" r="39"/></svg>' +
+        '<div class="disc"></div><div class="aura"></div>' +
+        '<div class="sprite-box"><img class="sprite" alt="" draggable="false"/></div>' +
+        '<span class="crown">♛</span><span class="spark">✦</span><span class="dot"></span>' +
+      '</div>' +
+      '<div class="name"></div><div class="meta"></div>';
+    el._img = el.querySelector('.sprite');
+    el._bubble = el.querySelector('.bubble');
+    el._ctx = el.querySelector('circle.ctx');
+    el._hit = el.querySelector('circle.hit');
+    el._name = el.querySelector('.name');
+    el._meta = el.querySelector('.meta');
+    el.addEventListener('dblclick', function () { if (el._agent && el._agent.isLead) focusSession(el._agent); });
+    el.addEventListener('click', function () {
+      if (!el._agent) return;
+      el.classList.add('has-bubble');
+      el._bubble.textContent = el._agent.isLead ? (el._agent.conversationTitle || '当前会话') : (el._agent.statusText || zh(el._sp));
+      clearTimeout(el._bt); el._bt = setTimeout(function () { updateMon(el, el._agent); }, 3000);
+    });
+    return el;
+  }
+
+  function updateMon(el, m) {
+    el._agent = m;
+    var st = STATE_LABEL[m.state] ? m.state : 'sleeping';
+    el.className = 'mon st-' + st + (m.isLead ? ' lead' : '') + (m.shiny ? ' shiny' : '') + (el.classList.contains('has-bubble') && el._bt ? '' : '');
+    if (el._sp !== m.pokemonSpecies || el._shiny !== !!m.shiny) {
+      el._sp = m.pokemonSpecies; el._shiny = !!m.shiny;
+      setSprite(el._img, el._sp, el._shiny);
+    }
+    var c = m.context || {};
+    var used = Math.max(0, Math.min(100, Number(c.usedPct) || 0));
+    var hit = Math.max(0, Math.min(100, Number(c.cacheHitPct) || 0));
+    el._ctx.setAttribute('stroke-dasharray', (used / 100 * RING_OUT).toFixed(1) + ' ' + RING_OUT.toFixed(1));
+    el._ctx.setAttribute('class', 'ctx' + (used >= 85 ? ' hot' : used >= 60 ? ' warm' : ''));
+    var known = c.cacheKnown !== false;
+    el._hit.setAttribute('stroke-dasharray', (known ? hit / 100 * RING_IN : 0).toFixed(1) + ' ' + RING_IN.toFixed(1));
+    el._hit.style.opacity = c.cacheWarm === false ? '.45' : '1';
+    el._name.textContent = m.name;
+    var rar = m.rarity && RARITY[m.rarity] ? '<span class="rar" style="background:' + rc(m.rarity) + '"></span>' : '';
+    el._meta.innerHTML = rar + esc(STATE_LABEL[st]) + ' · <span class="c">' + Math.round(used) + '%</span> / <span class="h">' + (known ? Math.round(hit) + '%' : '—') + '</span>';
+    var busy = st !== 'sleeping' && m.statusText;
+    el.classList.toggle('has-bubble', !!busy);
+    if (busy) el._bubble.textContent = m.statusText;
+    el._bt = null;
+    el.title = (m.isLead ? '会话领队 ' : '子智能体 ') + m.name + ' · ' + zh(m.pokemonSpecies) + (m.shiny ? ' ✦闪光' : '') +
+      (m.rarity && RARITY[m.rarity] ? ' / ' + RARITY[m.rarity].label : '') +
+      '\n' + (c.tooltipText ? String(c.tooltipText).split(' | ').join('\n') : '已用上下文 ' + (c.usedLabel || '') + ' (' + used + '%)') +
+      (m.isLead ? '\n双击跳转到这个会话' : '');
+  }
+
+  function renderStage(snap) {
+    var s = snap.summary || {};
+    $('stats').innerHTML =
+      chip('', s.queueCount || 0, '个会话') + chip('', s.total || 0, '只伙伴') +
+      chip('var(--warn)', s.working || 0, '工作中') + chip('var(--think)', s.thinking || 0, '思考中') +
+      chip('var(--faint)', s.sleeping || 0, '待命');
+    var lanes = $('lanes');
+    var projects = Array.isArray(snap.projects) ? snap.projects : [];
+    var totalQueues = projects.reduce(function (acc, p) {
+      return acc + (Array.isArray(p.queues) ? p.queues.length : 0);
+    }, 0);
+    lanes.classList.toggle('is-compact-queues', totalQueues > 3);
+    if (!projects.length) {
+      lanes.classList.remove('is-compact-queues');
+      lanes.innerHTML = '<div class="empty">现在没有活跃的智能体会话。<br/>在 Antigravity 里开始对话，或点右侧「召唤测试队员」看看效果。</div>';
+      state.monEls.clear();
+      return;
+    }
+    var keep = new Set();
+    var frag = document.createDocumentFragment();
+    projects.forEach(function (p) {
+      var sec = document.createElement('div'); sec.className = 'project';
+      sec.innerHTML = '<h2>' + esc(p.projectName || '全局会话') + '</h2>';
+      (p.queues || []).forEach(function (q) {
+        var lane = document.createElement('div'); lane.className = 'lane';
+        var lead = q.leadAgent || {};
+        var ctx = lead.context || {};
+        lane.innerHTML =
+          '<div class="lane-head"><span class="lane-title" title="' + esc(q.conversationTitle) + '">' + esc(q.conversationTitle || '未命名会话') + '</span>' +
+          '<span class="lane-sub">' + (q.members || []).length + ' 只 · 上下文 ' + esc(ctx.usedLabel || '-') + '</span>' +
+          '<button class="btn" title="在 Antigravity 中打开这个会话">打开会话 ↗</button></div><div class="party"></div>';
+        lane.querySelector('button').addEventListener('click', function () { focusSession(lead); });
+        var party = lane.querySelector('.party');
+        (q.members || []).forEach(function (m) {
+          var key = m.id + '|' + (q.conversationId || '');
+          keep.add(key);
+          var el = state.monEls.get(key);
+          if (!el) { el = monElement(m); state.monEls.set(key, el); }
+          updateMon(el, m);
+          party.appendChild(el);
+        });
+        sec.appendChild(lane);
+      });
+      frag.appendChild(sec);
+    });
+    lanes.replaceChildren(frag);
+    state.monEls.forEach(function (_el, key) { if (!keep.has(key)) state.monEls.delete(key); });
+  }
+  function chip(color, n, label) {
+    return '<span class="chip">' + (color ? '<i style="background:' + color + '"></i>' : '') + '<b>' + n + '</b>' + esc(label) + '</span>';
+  }
+
+  // ---------- collection views ----------
+  function renderCollection() {
+    var col = state.collection;
+    if (!col) return;
+    var st = col.stats || {};
+    $('dexCount').textContent = (st.speciesOwned || 0) + ' / ' + (st.speciesTotal || 7);
+    $('dexBar').style.width = Math.round(100 * (st.speciesOwned || 0) / Math.max(1, st.speciesTotal || 7)) + '%';
+    $('dexLine').textContent = '共抽 ' + (st.totalDraws || 0) + ' 次 · 闪光 ' + (st.shinyTotal || 0) + ' 只 · 闪光率 1/' + col.settings.shinyRate;
+    $('dexSummary').textContent = '已收集 ' + (st.speciesOwned || 0) + ' / ' + (st.speciesTotal || 7) + ' · 闪光 ' + (st.shinyTotal || 0);
+    $('shinyRateLine').textContent = '闪光 1/' + col.settings.shinyRate;
+
+    // recent draws (side)
+    var hist = col.history || [];
+    $('recentDraws').innerHTML = hist.length ? hist.slice(0, 5).map(function (h) {
+      return '<li><img src="' + spriteSrc(h.species, h.shiny) + '" style="filter:' + spriteFilter(h.species, h.shiny) + '" alt=""/>' +
+        '<div class="t"><b>' + esc(zh(h.species)) + (h.shiny ? ' <span class="tag shiny">✦ 闪光</span>' : '') + '</b><span>' + esc(h.name || '') + (h.demo ? ' · 测试' : '') + ' · ' + fmtTime(h.at) + '</span></div>' +
+        '<span class="stars" style="--rc:' + rc(h.rarity) + '">' + stars(h.rarity) + '</span></li>';
+    }).join('') : '<li class="muted">还没有抽卡记录</li>';
+
+    // pool
+    $('pool').innerHTML = (col.pool || []).map(function (p) {
+      return '<span class="chip" style="--rc:' + rc(p.rarity) + '"><i style="background:' + rc(p.rarity) + '"></i><b>' + esc(zh(p.species)) + '</b>' + esc(RARITY[p.rarity].label) + ' ' + p.pct + '%</span>';
+    }).join('');
+
+    // dex grid
+    $('dexGrid').innerHTML = (col.dex || []).map(function (d) {
+      var locked = !d.caught;
+      return '<div class="dex-card' + (locked ? ' locked' : '') + '" style="--rc:' + rc(d.rarity) + '" data-sp="' + d.species + '">' +
+        (d.shinyCaught ? '<button class="shiny-toggle" data-shiny-toggle="' + d.species + '" title="查看闪光形态">✦ ' + d.shinyCaught + '</button>' : '') +
+        '<div class="dex-art"><img src="' + spriteSrc(d.species, false) + '" alt=""/></div>' +
+        '<div class="dex-name"><b>' + (locked ? '？？？' : esc(zh(d.species))) + '</b><span>#' + String(d.dexNo != null ? d.dexNo : ((creature(d.species) || {}).dexNo || 0)).padStart(3, '0') + '</span></div>' +
+        '<div class="stars">' + stars(d.rarity) + ' <span class="muted">' + esc(RARITY[d.rarity].label) + '</span></div>' +
+        '<div class="dex-meta"><span>' + (locked ? '尚未遇见' : '遇见 ' + d.caught + ' 次') + '</span><span>' + (d.firstAt ? '首遇 ' + fmtTime(d.firstAt) : '') + '</span></div>' +
+        '</div>';
+    }).join('');
+
+    // history table
+    $('historyBody').innerHTML = hist.length ? hist.map(function (h) {
+      return '<tr><td><img src="' + spriteSrc(h.species, h.shiny) + '" style="filter:' + spriteFilter(h.species, h.shiny) + '" alt=""/></td>' +
+        '<td>' + esc(zh(h.species)) + (h.shiny ? ' <span class="tag shiny">✦ 闪光</span>' : '') + (h.isNewSpecies ? ' <span class="tag" style="color:var(--ok)">NEW</span>' : '') + '</td>' +
+        '<td><span class="stars" style="--rc:' + rc(h.rarity) + '">' + stars(h.rarity) + '</span> ' + esc(RARITY[h.rarity] ? RARITY[h.rarity].label : '') + '</td>' +
+        '<td>' + esc(h.name || '') + (h.isLead ? ' ♛' : '') + (h.demo ? ' <span class="muted">测试</span>' : '') + '</td>' +
+        '<td class="muted">' + esc(h.conversationTitle || '-') + '</td><td class="muted">' + fmtTime(h.at) + '</td></tr>';
+    }).join('') : '<tr><td colspan="6" class="muted">还没有抽卡记录</td></tr>';
+
+    renderSettings(col);
+  }
+
+  function renderSettings(col) {
+    var s = col.settings;
+    $('setEnabled').checked = !!s.gachaEnabled;
+    $('setAnim').checked = !!s.revealAnimation;
+    var sel = $('setShiny');
+    var labels = { 4096: '1/4096（原作）', 256: '1/256（默认）', 16: '1/16（调试）' };
+    sel.innerHTML = (col.shinyRatePresets || [4096, 1024, 512, 256, 128, 64, 16]).map(function (n) {
+      return '<option value="' + n + '"' + (n === s.shinyRate ? ' selected' : '') + '>' + (labels[n] || '1/' + n) + '</option>';
+    }).join('');
+    if ((col.shinyRatePresets || []).indexOf(s.shinyRate) < 0) sel.insertAdjacentHTML('beforeend', '<option selected value="' + s.shinyRate + '">1/' + s.shinyRate + '</option>');
+    $('setLeadMode').value = s.leadMode;
+    $('leadSpeciesField').style.display = s.leadMode === 'fixed' ? '' : 'none';
+    $('setLeadSpecies').innerHTML = (PACK ? PACK.creatures.map(function (c) { return c.id; }) : []).map(function (sp) {
+      return '<option value="' + sp + '"' + (sp === s.leadSpecies ? ' selected' : '') + '>' + zh(sp) + '</option>';
+    }).join('');
+
+    // Don't rebuild the roster table under the user's unsaved edits (periodic refresh).
+    if ($('rosterBody').dataset.dirty === '1') return;
+    var caught = (col.dex || []).filter(function (d) { return d.caught > 0; });
+    var roster = col.roster || [];
+    $('rosterBody').innerHTML = roster.length ? roster.map(function (r, i) {
+      var dexRow = (col.dex || []).filter(function (d) { return d.species === r.species; })[0] || {};
+      return '<tr data-i="' + i + '"><td><img src="' + spriteSrc(r.species, r.shiny) + '" style="filter:' + spriteFilter(r.species, r.shiny) + '" alt=""/></td>' +
+        '<td>' + esc(r.name || r.key) + (r.isLead ? ' ♛' : '') + (r.demo ? ' <span class="muted">测试</span>' : '') + '</td>' +
+        '<td class="muted">' + esc(r.conversationTitle || r.projectName || '-') + '</td>' +
+        '<td><select data-role="sp">' + caught.map(function (d) {
+          return '<option value="' + d.species + '"' + (d.species === r.species ? ' selected' : '') + '>' + zh(d.species) + '</option>';
+        }).join('') + '</select> <label class="muted" title="需要抽到过这只的闪光形态"><input type="checkbox" data-role="shiny"' + (r.shiny ? ' checked' : '') + (dexRow.shinyCaught ? '' : ' disabled') + '/> 闪光</label></td>' +
+        '<td><button class="btn" data-role="save">保存</button></td></tr>';
+    }).join('') : '<tr><td colspan="5" class="muted">暂无搭档</td></tr>';
+    Array.prototype.forEach.call($('rosterBody').querySelectorAll('tr[data-i]'), function (tr) {
+      var r = roster[Number(tr.dataset.i)];
+      var spSel = tr.querySelector('[data-role="sp"]');
+      var shinyBox = tr.querySelector('[data-role="shiny"]');
+      shinyBox.addEventListener('change', function () { $('rosterBody').dataset.dirty = '1'; });
+      spSel.addEventListener('change', function () {
+        $('rosterBody').dataset.dirty = '1';
+        var d = (col.dex || []).filter(function (x) { return x.species === spSel.value; })[0] || {};
+        shinyBox.disabled = !d.shinyCaught; if (shinyBox.disabled) shinyBox.checked = false;
+      });
+      tr.querySelector('[data-role="save"]').addEventListener('click', function () {
+        post('/api/collection/assign', { key: r.key, species: spSel.value, shiny: shinyBox.checked }).then(function (res) {
+          toast(res && res.ok ? '已更换搭档为 ' + zh(spSel.value) : '更换失败：' + ((res && res.error) || '未知错误'));
+          $('rosterBody').dataset.dirty = '';
+          loadCollection();
+        });
+      });
+    });
+  }
+
+  // ---------- gacha reveal ----------
+  function queueReveal(evt) {
+    if (!evt || !evt.seq || state.seenSeqs[evt.seq] || evt.silent) return;
+    state.seenSeqs[evt.seq] = true;
+    var animOn = !state.collection || state.collection.settings.revealAnimation;
+    if (!animOn) { toast('抽到 ' + zh(evt.species) + (evt.shiny ? '（闪光）' : '')); return; }
+    state.revealQueue.push(evt);
+    if (!state.revealing) nextReveal();
+  }
+  function nextReveal() {
+    var evt = state.revealQueue.shift();
+    var box = $('reveal');
+    if (!evt) { state.revealing = false; box.hidden = true; loadCollection(); return; }
+    state.revealing = true;
+    var stage = box.querySelector('.stage-r');
+    stage.querySelectorAll('.sparkle').forEach(function (n) { n.remove(); });
+    box.style.setProperty('--rc', evt.shiny ? 'var(--shiny)' : rc(evt.rarity));
+    box.className = 'reveal' + (document.body.classList.contains('pixel') ? ' pixel' : '') + ((evt.rarity === 'SSR' || evt.rarity === 'SR' || evt.shiny) ? ' rare' : '');
+    box.hidden = false;
+    setSprite($('rImg'), evt.species, evt.shiny);
+    $('rLabel').textContent = stars(evt.rarity) + '  ' + (RARITY[evt.rarity] ? RARITY[evt.rarity].label : '');
+    $('rName').textContent = (evt.shiny ? '✦ ' : '') + zh(evt.species);
+    $('rWho').textContent = evt.demo && !evt.agentId ? '试抽' : ((evt.isLead ? '会话领队 ' : '新队员 ') + (evt.name || '') + (evt.conversationTitle ? ' · ' + evt.conversationTitle : ''));
+    $('rBadges').innerHTML = (evt.isNewSpecies ? '<span class="badge new">NEW</span>' : '') + (evt.shiny ? '<span class="badge shiny">✦ 闪光伙伴</span>' : '');
+
+    var timers = [];
+    function at(ms, fn) { timers.push(setTimeout(fn, ms)); }
+    var done = false;
+    function finish() {
+      if (done) return; done = true;
+      timers.forEach(clearTimeout);
+      box.removeEventListener('click', onClick);
+      nextReveal();
+    }
+    function showCard() {
+      box.classList.remove('wobbling', 'dropping'); box.classList.add('burst');
+      at(180, function () {
+        box.classList.add('show-card');
+        if (evt.shiny || evt.rarity === 'SSR') burstSparkles(stage, evt.shiny ? 22 : 14);
+      });
+      at(4800, finish);
+    }
+    var onClick = function () { if (box.classList.contains('show-card')) finish(); else { timers.forEach(clearTimeout); timers = []; showCard(); } };
+    box.addEventListener('click', onClick);
+    box.classList.add('dropping');
+    at(560, function () { box.classList.remove('dropping'); box.classList.add('wobbling'); });
+    at(2200, showCard);
+  }
+  function burstSparkles(stage, n) {
+    for (var i = 0; i < n; i++) {
+      var s = document.createElement('span');
+      s.className = 'sparkle'; s.textContent = i % 3 ? '✦' : '✧';
+      var a = Math.random() * Math.PI * 2, r = 120 + Math.random() * 120;
+      s.style.left = '50%'; s.style.top = '40%';
+      s.style.fontSize = (12 + Math.random() * 16) + 'px';
+      s.style.setProperty('--dx', Math.cos(a) * r + 'px');
+      s.style.setProperty('--dy', Math.sin(a) * r + 'px');
+      s.style.animationDelay = (Math.random() * 0.4) + 's';
+      stage.appendChild(s);
+    }
+  }
+
+  // ---------- bridge I/O ----------
+  function post(path, body) {
+    return fetch(BRIDGE + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
+      .then(function (r) { return r.json(); }).catch(function () { return null; });
+  }
+  function focusSession(lead) {
+    if (!lead || !lead.conversationId) return;
+    post('/api/focus-session', {
+      conversationId: lead.conversationId, conversationTitle: lead.conversationTitle, projectName: lead.projectName,
+      workspacePath: lead.workspacePath, windowId: lead.windowId, source: 'web-stage'
+    }).then(function (res) { toast(res && res.ok !== false ? '已请求打开会话：' + (lead.conversationTitle || '') : '没有找到对应的 Antigravity 窗口'); });
+  }
+  function loadCollection() {
+    return fetch(BRIDGE + '/api/collection', { cache: 'no-store' }).then(function (r) { return r.json(); })
+      .then(function (col) { if (col && col.ok) { state.collection = col; renderCollection(); } }).catch(function () {});
+  }
+  function ingest(snap) {
+    if (!snap || !snap.ok) return;
+    state.snapshot = snap;
+    $('conn').classList.add('on');
+    var s = snap.summary || {};
+    $('subline').textContent = '已连接 · ' + (s.projectCount || 0) + ' 个项目 · ' + (s.total || 0) + ' 只伙伴';
+    if (snap.activeTheme) applyTheme(snap.activeTheme, false);
+    if (snap.pack && (!PACK || snap.pack.id !== PACK.id || snap.pack.version !== PACK.version) && !state.packLoading) {
+      state.packLoading = true;
+      loadPack().then(function () { state.packLoading = false; loadCollection(); loadPackList(); });
+    }
+    var recent = Array.isArray(snap.recentGacha) ? snap.recentGacha : [];
+    if (!state.primed) {
+      // Don't replay draws that happened before the page was opened.
+      recent.forEach(function (e) { state.seenSeqs[e.seq] = true; });
+      state.primed = true;
+    } else {
+      recent.forEach(queueReveal);
+    }
+    renderStage(snap);
+  }
+  function connect() {
+    fetch(BRIDGE + '/api/agents', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(ingest)
+      .catch(function () { $('conn').classList.remove('on'); $('subline').textContent = '状态桥未连接（127.0.0.1:17580）'; });
+    try {
+      var es = new EventSource(BRIDGE + '/api/events');
+      es.addEventListener('snapshot', function (e) { try { ingest(JSON.parse(e.data)); } catch (_) {} });
+      es.addEventListener('gacha', function (e) { try { if (state.primed) queueReveal(JSON.parse(e.data)); } catch (_) {} });
+      es.addEventListener('pack-change', function () { loadPack().then(loadCollection).then(loadPackList); });
+      es.addEventListener('theme-change', function (e) { try { var d = JSON.parse(e.data); if (d.theme) applyTheme(d.theme, false); } catch (_) {} });
+      es.onerror = function () { $('conn').classList.remove('on'); $('subline').textContent = '连接中断，正在重连…'; };
+      es.onopen = function () { $('conn').classList.add('on'); };
+    } catch (e) {
+      setInterval(function () { fetch(BRIDGE + '/api/agents', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(ingest).catch(function () {}); }, 1500);
+    }
+  }
+
+  // ---------- wire up ----------
+  buildSwatches();
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (t) { t.addEventListener('click', function () { showTab(t.dataset.tab); }); });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-goto]'), function (a) { a.addEventListener('click', function (e) { e.preventDefault(); showTab(a.dataset.goto); }); });
+  $('summonBtn').addEventListener('click', function () { post('/api/summon-overlay', { source: 'web-stage' }).then(function () { toast('已请求显示桌面浮窗'); }); });
+  $('pullBtn').addEventListener('click', function () { post('/api/gacha/pull', {}).then(function (res) { if (res && res.draw) queueReveal(res.draw); }); });
+  $('spawnBtn').addEventListener('click', function () {
+    var id = 'trainer-' + Math.random().toString(36).slice(2, 6);
+    post('/api/simulate', { id: id, name: id, role: 'helper', state: 'working', statusText: '测试队员报到！', ttlMs: 45000 });
+  });
+  $('setEnabled').addEventListener('change', function (e) { post('/api/collection/settings', { gachaEnabled: e.target.checked }).then(loadCollection); });
+  $('setAnim').addEventListener('change', function (e) { post('/api/collection/settings', { revealAnimation: e.target.checked }).then(loadCollection); });
+  $('setShiny').addEventListener('change', function (e) { post('/api/collection/settings', { shinyRate: Number(e.target.value) }).then(loadCollection); });
+  $('setLeadMode').addEventListener('change', function (e) { post('/api/collection/settings', { leadMode: e.target.value }).then(loadCollection); });
+  $('setPack').addEventListener('change', function (e) {
+    post('/api/collection/settings', { activePack: e.target.value }).then(function (res) {
+      if (res && res.packChanged) toast('已切换皮肤包，当前智能体会在新皮肤包里重新分配搭档');
+      loadPack().then(loadCollection).then(loadPackList);
+    });
+  });
+  $('setLeadSpecies').addEventListener('change', function (e) { post('/api/collection/settings', { leadSpecies: e.target.value }).then(loadCollection); });
+  // Two-step confirm (window.confirm is blocked when the stage runs inside an IDE webview).
+  $('resetBtn').addEventListener('click', function () {
+    var b = $('resetBtn');
+    if (!b.dataset.armed) {
+      b.dataset.armed = '1'; b.textContent = '再点一次确认（不可撤销）';
+      clearTimeout(b._t); b._t = setTimeout(function () { delete b.dataset.armed; b.textContent = '重置'; }, 4000);
+      return;
+    }
+    clearTimeout(b._t); delete b.dataset.armed; b.textContent = '重置';
+    post('/api/collection/reset', { confirm: true }).then(function () { toast('图鉴已重置'); loadCollection(); });
+  });
+  $('dexGrid').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-shiny-toggle]'); if (!b) return;
+    var card = b.closest('.dex-card'); var img = card.querySelector('.dex-art img'); var sp = b.dataset.shinyToggle;
+    var on = card.classList.toggle('show-shiny');
+    setSprite(img, sp, on);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (!$('reveal').hidden && (e.key === 'Escape' || e.key === ' ' || e.key === 'Enter')) { e.preventDefault(); $('reveal').click(); }
+  });
+
+  showTab(readPref('pkmn-stage-tab', 'stage'));
+  loadPack().then(function () { loadCollection(); loadPackList(); connect(); });
+  setInterval(loadCollection, 15000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+MIT License
+
+Copyright (c) 2026 Antigravity Pokemon Pets contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+Scope of this license / 许可范围说明
+
+This MIT License applies only to the original source code and documentation
+written by the contributors of this repository.
+
+It does NOT cover any Pokémon-related material, including but not limited to
+the names, characters, images, sprites, animations and frame sequences found
+under the `assets/` directory (for example `assets/official-sprites/`,
+`assets/official-sprites-data.js` and `assets/sprites/`). Those materials are
+the property of their respective rights holders (Nintendo, Creatures Inc.,
+GAME FREAK inc. and The Pokémon Company) and are NOT licensed under MIT.
+See NOTICE.md for details.
+
+The default skin pack under `packs/critters/` is original artwork dedicated to
+the public domain under CC0 1.0 (see `packs/critters/LICENSE`).
+
+本 MIT 许可证仅适用于本仓库贡献者编写的原创代码与文档，不覆盖 `assets/` 目录下
+任何与宝可梦相关的名称、形象、精灵图、动图与拆帧素材；上述素材的权利归其各自
+权利人所有，详见 NOTICE.md。
