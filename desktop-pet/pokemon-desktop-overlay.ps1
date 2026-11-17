@@ -734,6 +734,8 @@ function ConvertTo-FrozenBitmapImage([string]$FilePath) {
 }
 
 function Invoke-BridgeGetJson([string]$Path, [int]$TimeoutMs = 1500) {
+    $resp = $null
+    $sr = $null
     try {
         $req = [System.Net.HttpWebRequest]::Create("$BridgeUrl$Path")
         $req.Method = "GET"
@@ -742,10 +744,15 @@ function Invoke-BridgeGetJson([string]$Path, [int]$TimeoutMs = 1500) {
         $resp = $req.GetResponse()
         $sr = New-Object System.IO.StreamReader($resp.GetResponseStream(), [System.Text.Encoding]::UTF8)
         $raw = $sr.ReadToEnd()
-        $sr.Close()
-        $resp.Close()
         if ($raw) { return ($raw | ConvertFrom-Json) }
-    } catch {}
+    } catch {
+        if ($_.Exception -and $_.Exception.Response) {
+            try { $_.Exception.Response.Close() } catch {}
+        }
+    } finally {
+        if ($sr) { try { $sr.Dispose() } catch {} }
+        if ($resp) { try { $resp.Close() } catch {} }
+    }
     return $null
 }
 
@@ -979,7 +986,7 @@ function Get-AuthenticSpritePack([string]$Species, [string]$Style = "showdown", 
         $offY = ($ch / 2.0) - ($massY / $massW)
     }
     $pack = @{ Species = $sp; Style = $st; Pixelated = $pixelated; Shiny = $Shiny; Frames = $frames; Delays = $delays; Count = $frames.Count; Width = $cw; Height = $ch; CenterOffX = $offX; CenterOffY = $offY }
-    if ($script:SpritePackCache.Count -ge 24) {
+    if ($script:SpritePackCache.Count -ge 12) {
         $activeKeys = @{}
         if ($script:Pets) {
             foreach ($p in $script:Pets.Values) {
@@ -988,12 +995,15 @@ function Get-AuthenticSpritePack([string]$Species, [string]$Style = "showdown", 
                 }
             }
         }
+        $evicted = $false
         foreach ($ck in @($script:SpritePackCache.Keys)) {
-            if ($script:SpritePackCache.Count -lt 20) { break }
+            if ($script:SpritePackCache.Count -lt 9) { break }
             if (-not $activeKeys.ContainsKey($ck)) {
                 $script:SpritePackCache.Remove($ck)
+                $evicted = $true
             }
         }
+        if ($evicted) { $script:PendingSpriteGc = $true }
     }
     $script:SpritePackCache[$cacheKey] = $pack
     return $pack
@@ -2218,9 +2228,17 @@ function Update-PetVisualState($Pet) {
     $maxCompact  = Format-TokenCompact ([double]$ctx.maxTokens)
     $cacheCompact = Format-TokenCompact ([double]$ctx.cachedTokens)
 
-    $Pet.ContextRedArc.Data  = Build-ArcGeometry 42.0 42.0 38.5 $usedPctVal
+    $usedArcKey = [Math]::Round($usedPctVal, 1)
+    if ($Pet._LastUsedArcKey -ne $usedArcKey) {
+        $Pet._LastUsedArcKey = $usedArcKey
+        $Pet.ContextRedArc.Data = Build-ArcGeometry 42.0 42.0 38.5 $usedPctVal
+    }
     $cacheKnownVal = ($ctx.cacheKnown -ne $false)
-    $Pet.CacheGreenArc.Data  = if ($cacheKnownVal) { Build-ArcGeometry 42.0 42.0 33.7 $cachePctVal } else { [System.Windows.Media.Geometry]::Empty }
+    $cacheArcKey = if ($cacheKnownVal) { [string][Math]::Round($cachePctVal, 1) } else { "none" }
+    if ($Pet._LastCacheArcKey -ne $cacheArcKey) {
+        $Pet._LastCacheArcKey = $cacheArcKey
+        $Pet.CacheGreenArc.Data = if ($cacheKnownVal) { Build-ArcGeometry 42.0 42.0 33.7 $cachePctVal } else { [System.Windows.Media.Geometry]::Empty }
+    }
     # Expired cache (idle past the prompt-cache TTL): the next request re-bills the prompt, so dim the arc.
     $Pet.CacheGreenArc.Stroke = if ($ctx.cacheWarm -eq $false) { Get-Brush "#7F4ADE80" } else { Get-Brush "#4ADE80" }
     # Used-context arc warms up as the window fills: calm -> amber -> red
@@ -2237,7 +2255,11 @@ function Update-PetVisualState($Pet) {
     $tipHit  = "$(U '\u7F13\u5B58\u547D\u4E2D ')$cachePctVal% ($cacheCompact)"
     # Bridge tooltip carries the real cumulative cache ledger (requests / cold starts / warm-or-expired).
     $tipCtxBlock = if ($ctx.tooltipText) { ([string]$ctx.tooltipText) -replace ' \| ', "`n" } else { "$tipCtx`n$tipHit" }
-    $Pet.RootControl.ToolTip = "$tipRole $($Pet.Name) $(U '\u00B7') $tipMon`n$(U '\uD83D\uDCC1 ')$($Pet.ProjectName)`n$(U '\uD83D\uDCAC ')$($Pet.ConversationTitle)`n$tipCtxBlock"
+    $newTooltip = "$tipRole $($Pet.Name) $(U '\u00B7') $tipMon`n$(U '\uD83D\uDCC1 ')$($Pet.ProjectName)`n$(U '\uD83D\uDCAC ')$($Pet.ConversationTitle)`n$tipCtxBlock"
+    if ($Pet._LastTooltipText -ne $newTooltip) {
+        $Pet._LastTooltipText = $newTooltip
+        $Pet.RootControl.ToolTip = $newTooltip
+    }
 
     # Bubble: session info (single-click on lead) > temporary message > manual > live status while busy
     $Pet.BubbleBorder.Background  = Get-Brush $pal.Bubble
@@ -3151,11 +3173,7 @@ function New-PetCardControl([hashtable]$AgentData, [int]$SlotIndex) {
             <TextBlock Text="&#x265B;" FontSize="11" Foreground="#FDE68A" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-2,0,0"/>
         </Border>
         <TextBlock x:Name="ShinyBadge" Text="&#x2726;" FontSize="13" FontWeight="Bold" Foreground="#FDE047"
-                   HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,3,0" Visibility="Collapsed" IsHitTestVisible="False">
-            <TextBlock.Effect>
-                <DropShadowEffect BlurRadius="6" ShadowDepth="0" Color="#FDE047" Opacity="0.9"/>
-            </TextBlock.Effect>
-        </TextBlock>
+                   HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,3,0" Visibility="Collapsed" IsHitTestVisible="False"/>
         <Ellipse x:Name="StateDot" Width="11" Height="11" HorizontalAlignment="Right" VerticalAlignment="Bottom"
                  Margin="0,0,7,7" Fill="#64748B" Stroke="#E616121F" StrokeThickness="2" IsHitTestVisible="False"/>
         <TextBlock x:Name="LeadChevron" Text="" Visibility="Collapsed" IsHitTestVisible="False"/>
@@ -3582,11 +3600,8 @@ function New-UnifiedOverlayWindow {
             </Style.Triggers>
         </Style>
     </Window.Resources>
-    <Border x:Name="RootBorder" CornerRadius="14" BorderThickness="0" Padding="8,5,8,6" Margin="10,6,10,12"
-            Background="#A612111A" BorderBrush="Transparent">
-        <Border.Effect>
-            <DropShadowEffect BlurRadius="14" ShadowDepth="2" Direction="270" Opacity="0.28" Color="#000000"/>
-        </Border.Effect>
+    <Border x:Name="RootBorder" CornerRadius="14" BorderThickness="1" Padding="8,5,8,6" Margin="10,6,10,12"
+            Background="#A612111A" BorderBrush="#33FFFFFF">
         <StackPanel Orientation="Vertical">
             <!-- Slim draggable header -->
             <Border x:Name="HeaderBorder" Background="Transparent" Cursor="SizeAll" Padding="2,0,0,0">
@@ -3966,11 +3981,27 @@ function Sync-QueuesToPets([array]$QueueRows) {
     }
 }
 
+$script:PendingSpriteGc = $false
+$script:LastOverlayGcUtc = [DateTime]::UtcNow
+
 function Sync-AgentPets {
     Check-IdeLifecycle
     if ($script:HiddenForNoHostWindow) { return @() }
     $queueRows = @(Fetch-LiveQueues)
     Sync-QueuesToPets $queueRows
+
+    $nowGc = [DateTime]::UtcNow
+    if ($script:PendingSpriteGc -or ($nowGc - $script:LastOverlayGcUtc).TotalSeconds -ge 180) {
+        $fullCollect = [bool]$script:PendingSpriteGc
+        $script:PendingSpriteGc = $false
+        $script:LastOverlayGcUtc = $nowGc
+        if ($fullCollect) {
+            [System.GC]::Collect()
+            [System.GC]::WaitForPendingFinalizers()
+        } else {
+            [System.GC]::Collect(1, [System.GCCollectionMode]::Optimized, $false)
+        }
+    }
     return $queueRows
 }
 
