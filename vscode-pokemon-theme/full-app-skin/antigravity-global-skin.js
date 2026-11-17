@@ -2135,31 +2135,14 @@
   }
 
   function ensureSubagentHeaderToggle(listContainer) {
-    if (!listContainer || !listContainer.parentElement) return;
-    var sectionRoot = listContainer.parentElement;
-    var prevHeader = listContainer.previousElementSibling || sectionRoot.firstElementChild;
-    if (!prevHeader || prevHeader === listContainer) return;
-
-    var existing = prevHeader.querySelector('.pkmn-party-layout-btn');
-    var labelText = state.partyTwoCol ? '🎴 并排2列' : '📋 单列编队';
-    if (existing) {
-      if (existing.textContent !== labelText) {
-        existing.textContent = labelText;
-      }
-      return;
+    // The single/two-column layout toggle was removed: its header detection often landed inside
+    // individual subagent cards (showing a stray "并排2列" badge under every card). Clean up any
+    // copies injected by older versions and do nothing else.
+    var root = (listContainer && listContainer.parentElement) || document;
+    var stale = root.querySelectorAll('.pkmn-party-layout-btn');
+    for (var i = 0; i < stale.length; i++) {
+      if (stale[i].parentNode) stale[i].parentNode.removeChild(stale[i]);
     }
-
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'pkmn-party-layout-btn';
-    btn.textContent = labelText;
-    btn.title = '切换队伍栏布局：双列并排 / 单列列表';
-    btn.addEventListener('click', function (ev) {
-      ev.stopPropagation();
-      ev.preventDefault();
-      togglePartyColumns();
-    });
-    prevHeader.appendChild(btn);
   }
 
   var PARTY_RING_R_RED = 21.5;

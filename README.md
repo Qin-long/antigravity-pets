@@ -10,7 +10,7 @@
 <!-- 截图占位：请把截图放到 docs/images/，并替换下面的文件名 -->
 | 桌面共享浮窗 | IDE 全局皮肤 + Subagents 面板 | 副屏「桌宠乐园」 |
 |---|---|---|
-| `docs/images/overlay.png`（待补） | `docs/images/global-skin.png`（待补） | `docs/images/pet-arena.png`（待补） |
+| ![桌面共享浮窗](docs/images/overlay.png) | `docs/images/global-skin.png`（待补） | ![副屏「桌宠乐园」](docs/images/pet-arena.png) |
 
 ---
 
