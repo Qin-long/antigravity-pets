@@ -927,7 +927,7 @@ export function buildAgentContextMetrics(rawMetrics = null, modelName = '', nowM
   };
 }
 
-function extractPerfTelemetry(entries) {
+function extractPerfTelemetry(entries, fileMtimeMs = NaN) {
   let tps = null;
   let avgTps = null;
   let ttfpMs = null;
@@ -942,39 +942,74 @@ function extractPerfTelemetry(entries) {
   let sumSec = 0;
   let recentSamples = 0;
   let lastUserTs = NaN;
-  let lastPlannerAfterUserTs = NaN;
-  let latestPlannerTs = NaN;
+  let latestStepTs = NaN;
+  let awaitingFirstPlan = false;
+  let firstPlanIdx = -1;
 
   for (let i = 0; i < entries.length; i++) {
     const s = entries[i];
     if (!s) continue;
     const ts = s.created_at ? Date.parse(s.created_at) : NaN;
+    if (Number.isFinite(ts)) {
+      latestStepTs = ts;
+    }
+
     if (s.type === 'USER_INPUT' && Number.isFinite(ts)) {
       lastUserTs = ts;
-      lastPlannerAfterUserTs = NaN;
-    } else if (s.type === 'PLANNER_RESPONSE') {
+      awaitingFirstPlan = true;
+      firstPlanIdx = -1;
+      continue;
+    }
+
+    // 首步延迟 (TTFP: Time To First Plan/Step):
+    // Antigravity 在 USER_INPUT 同秒即写入 PLANNER_RESPONSE 占位 step，created_at 是创建时刻而非完成时刻；
+    // 因此真实首步完成时刻取紧随首个 PLANNER_RESPONSE 之后的下一个非 USER_INPUT step 的 created_at，
+    // 若该 PLANNER_RESPONSE 为文件最后一条且已 DONE，则回退使用文件落盘 mtimeMs。
+    if (awaitingFirstPlan && firstPlanIdx >= 0 && i === firstPlanIdx + 1 && Number.isFinite(ts) && Number.isFinite(lastUserTs)) {
+      const span = ts - lastUserTs;
+      if (span >= 200 && span <= 180_000) {
+        ttfpMs = span;
+      }
+      awaitingFirstPlan = false;
+    }
+
+    if (s.type === 'PLANNER_RESPONSE') {
+      if (awaitingFirstPlan && firstPlanIdx < 0) {
+        firstPlanIdx = i;
+        if (i === entries.length - 1 && s.status === 'DONE' && Number.isFinite(fileMtimeMs) && Number.isFinite(lastUserTs)) {
+          const span = Math.round(fileMtimeMs - lastUserTs);
+          if (span >= 200 && span <= 180_000) {
+            ttfpMs = span;
+          }
+          awaitingFirstPlan = false;
+        }
+      }
+
       const outTok = Math.max(0, Math.round(Number(s.output_tokens) || 0));
       totalOutputTokens += outTok;
-      if (Number.isFinite(ts)) {
-        latestPlannerTs = ts;
-        if (Number.isFinite(lastUserTs) && !Number.isFinite(lastPlannerAfterUserTs)) {
-          lastPlannerAfterUserTs = ts;
-          ttfpMs = Math.max(400, Math.min(180_000, ts - lastUserTs));
-        }
-        if (outTok > 0 && i > 0) {
-          let prevTs = NaN;
-          for (let k = i - 1; k >= Math.max(0, i - 3); k--) {
-            const pts = entries[k]?.created_at ? Date.parse(entries[k].created_at) : NaN;
-            if (Number.isFinite(pts)) {
-              prevTs = pts;
-              break;
-            }
+
+      // 生成速度 (TPS):
+      // PLANNER_RESPONSE.created_at 是模型开始生成该步的时刻，其结束时刻是紧随其后的非 USER_INPUT step 的 created_at
+      // （如首个工具调用 GENERIC）；不可用前一条 GENERIC 的 created_at 相减（那算的是上一轮工具执行耗时）。
+      if (outTok > 0 && Number.isFinite(ts)) {
+        let endTs = NaN;
+        if (i + 1 < entries.length) {
+          const nxt = entries[i + 1];
+          if (nxt && nxt.type !== 'USER_INPUT') {
+            const nts = nxt.created_at ? Date.parse(nxt.created_at) : NaN;
+            if (Number.isFinite(nts)) endTs = nts;
           }
-          if (Number.isFinite(prevTs)) {
-            const dtMs = Math.max(1000, Math.min(120_000, ts - prevTs));
+        } else if (s.status === 'DONE' && Number.isFinite(fileMtimeMs)) {
+          endTs = fileMtimeMs;
+        }
+
+        if (Number.isFinite(endTs)) {
+          const dtMs = endTs - ts;
+          // 忽略 <1000ms（秒级量化 0s 抖动）和 >120s（异常挂起/系统休眠）样本，避免虚高或暴跌
+          if (dtMs >= 1000 && dtMs <= 120_000) {
             const curTps = Math.round((outTok / (dtMs / 1000)) * 10) / 10;
             tps = curTps;
-            if (i >= entries.length - 16) {
+            if (i >= entries.length - 20) {
               sumOut += outTok;
               sumSec += dtMs / 1000;
               recentSamples++;
@@ -988,8 +1023,20 @@ function extractPerfTelemetry(entries) {
   if (recentSamples > 0 && sumSec > 0) {
     avgTps = Math.round((sumOut / sumSec) * 10) / 10;
   }
-  if (Number.isFinite(lastUserTs) && Number.isFinite(latestPlannerTs) && latestPlannerTs >= lastUserTs) {
-    lastTurnDurationMs = Math.max(500, Math.min(600_000, latestPlannerTs - lastUserTs));
+
+  const lastEntry = entries[entries.length - 1];
+  const turnEndTs =
+    lastEntry &&
+    lastEntry.status === 'DONE' &&
+    Number.isFinite(fileMtimeMs) &&
+    Number.isFinite(latestStepTs) &&
+    fileMtimeMs > latestStepTs &&
+    fileMtimeMs - latestStepTs <= 120_000
+      ? Math.round(fileMtimeMs)
+      : latestStepTs;
+
+  if (Number.isFinite(lastUserTs) && Number.isFinite(turnEndTs) && turnEndTs >= lastUserTs) {
+    lastTurnDurationMs = Math.max(500, Math.min(600_000, turnEndTs - lastUserTs));
   }
 
   return { tps, avgTps, ttfpMs, lastTurnDurationMs, totalOutputTokens };
@@ -1002,7 +1049,7 @@ function extractPerfTelemetry(entries) {
 function extractTranscriptContextMetrics(stat, entries, nowMs = Date.now()) {
   if (!stat) return null;
 
-  const perf = extractPerfTelemetry(entries);
+  const perf = extractPerfTelemetry(entries, stat.mtimeMs);
   let tokenStepIdx = -1;
   for (let i = entries.length - 1; i >= 0; i--) {
     const step = entries[i];

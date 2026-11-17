@@ -490,6 +490,8 @@ $WorkspaceRoot = Split-Path -Parent $ScriptDir
 $PidFile = Join-Path $env:TEMP "antigravity-pokemon-desktop-overlay.pid"
 $StateFile = Join-Path $env:TEMP "antigravity-pokemon-desktop-overlay-state.json"
 $MuteFile = Join-Path $env:TEMP "antigravity-pokemon-desktop-overlay-muted.json"
+# Persistent (survives overlay/IDE restarts; NOT deleted on exit unlike $StateFile) user-placed window position.
+$PositionFile = Join-Path $env:USERPROFILE ".gemini\antigravity\pokemon-overlay-position.json"
 $CurrentDesktop = [PokemonOverlayWin32]::GetCurrentDesktopName()
 $CurrentSessionId = (Get-Process -Id $PID).SessionId
 $IsRealDesktop = ($CurrentDesktop -eq "Default")
@@ -1833,7 +1835,9 @@ function Fetch-LiveQueues {
                 $script:LastSummonSeen = $sumAt
                 if ($script:MainWindow) {
                     if ($script:IsClickThrough) { Set-PetClickThroughAll $false }
-                    Force-ShowSharedOverlayWindow -ResetManualMove
+                    # Summon = bring to front at the user's saved spot (off-screen safety is handled by the
+                    # all-monitor placement check); never snap back to the primary monitor.
+                    Force-ShowSharedOverlayWindow
                 }
             }
         }
@@ -2665,7 +2669,7 @@ function Initialize-TrayIcon {
         $script:TrayGhostItem = $miGhost
 
         $miShow = New-Object System.Windows.Forms.ToolStripMenuItem($TXT.TrayShow)
-        $miShow.Add_Click({ Force-ShowSharedOverlayWindow -ResetManualMove })
+        $miShow.Add_Click({ Force-ShowSharedOverlayWindow })
         [void]$menu.Items.Add($miShow)
 
         $miStage = New-Object System.Windows.Forms.ToolStripMenuItem($TXT.TrayStage)
@@ -2701,30 +2705,179 @@ function Get-WorkAreaSafe {
     return @{ Left = $l; Top = $t; Right = $r; Bottom = $b }
 }
 
+# >>> OVERLAY-PLACEMENT-PURE (multi-monitor placement math; no WPF/Forms access, extracted verbatim by unit tests)
+# All rects are WPF DIP work areas: @{ Name; Left; Top; Right; Bottom; Primary }.
+function ConvertTo-OverlayDipRect($Rect, [double]$ScaleX, [double]$ScaleY) {
+    # Device px -> DIP. Scale = DIP per device pixel (CompositionTarget.TransformFromDevice M11/M22). One process-wide
+    # scale is applied to every monitor: a system-DPI-aware process (powershell.exe) sees ALL monitors (even those with a
+    # different scaling %) in system-DPI virtualized px, so dividing by the same factor keeps negative/secondary coords
+    # consistent with WPF Window.Left/Top in mixed-DPI setups.
+    if (-not ($ScaleX -gt 0)) { $ScaleX = 1.0 }
+    if (-not ($ScaleY -gt 0)) { $ScaleY = 1.0 }
+    return @{ Left = [double]$Rect.Left * $ScaleX; Top = [double]$Rect.Top * $ScaleY; Right = [double]$Rect.Right * $ScaleX; Bottom = [double]$Rect.Bottom * $ScaleY }
+}
+
+function Get-OverlayRectOverlap($A, $B) {
+    $w = [Math]::Min([double]$A.Right, [double]$B.Right) - [Math]::Max([double]$A.Left, [double]$B.Left)
+    $h = [Math]::Min([double]$A.Bottom, [double]$B.Bottom) - [Math]::Max([double]$A.Top, [double]$B.Top)
+    if ($w -le 0 -or $h -le 0) { return 0.0 }
+    return $w * $h
+}
+
+function Test-OverlayPointOnScreens($Screens, [double]$X, [double]$Y) {
+    foreach ($s in @($Screens)) {
+        if ($X -ge [double]$s.Left -and $X -lt [double]$s.Right -and $Y -ge [double]$s.Top -and $Y -lt [double]$s.Bottom) { return $true }
+    }
+    return $false
+}
+
+function Find-OverlayScreenForRect($Screens, $Rect) {
+    $best = $null; $bestArea = 0.0
+    foreach ($s in @($Screens)) {
+        $a = Get-OverlayRectOverlap $s $Rect
+        if ($a -gt $bestArea) { $bestArea = $a; $best = $s }
+    }
+    return $best
+}
+
+function Get-OverlayPrimaryScreen($Screens, [string]$PreferredName) {
+    $list = @($Screens)
+    if ($PreferredName) { foreach ($s in $list) { if ([string]$s.Name -eq $PreferredName) { return $s } } }
+    foreach ($s in $list) { if ($s.Primary) { return $s } }
+    if ($list.Count -gt 0) { return $list[0] }
+    return @{ Name = "fallback"; Left = 0.0; Top = 0.0; Right = 1920.0; Bottom = 1040.0; Primary = $true }
+}
+
+# Top-center default on a screen work area (outer margin of the window is transparent).
+function Get-OverlayDefaultPlacement($Screen, [double]$Width) {
+    return @{ Left = (([double]$Screen.Left + [double]$Screen.Right) / 2.0) - ($Width / 2.0); Top = [double]$Screen.Top - 4.0 }
+}
+
+# Minimal push-back into ONE monitor: header stays reachable, the window may hang off the bottom edge.
+function Limit-OverlayRectToScreen($Screen, [double]$Left, [double]$Top, [double]$Width) {
+    $minL = [double]$Screen.Left - 10.0
+    $maxL = [Math]::Max($minL, [double]$Screen.Right - $Width + 10.0)
+    $minT = [double]$Screen.Top - 10.0
+    $maxT = [Math]::Max($minT, [double]$Screen.Bottom - 48.0)
+    return @{ Left = [Math]::Max($minL, [Math]::Min($maxL, $Left)); Top = [Math]::Max($minT, [Math]::Min($maxT, $Top)) }
+}
+
+# Final Left/Top for a desired Left/Top, evaluated against ALL monitors:
+#  keep     : header strip visible on any monitor(s) (negative coords, monitor above, straddling two monitors)
+#  clamp    : partially off-screen -> minimal push into the monitor holding most of the window
+#  fallback : on no monitor at all (e.g. the secondary monitor was unplugged) -> top-center of preferred/primary
+function Resolve-OverlayPlacement($Screens, [double]$Left, [double]$Top, [double]$Width, [double]$Height, [string]$PreferredScreenName) {
+    $hdrY = $Top + 24.0
+    $ok = (Test-OverlayPointOnScreens $Screens ($Left + 12.0) $hdrY) -and
+          (Test-OverlayPointOnScreens $Screens ($Left + $Width - 12.0) $hdrY) -and
+          (Test-OverlayPointOnScreens $Screens ($Left + ($Width / 2.0)) $hdrY) -and
+          (Test-OverlayPointOnScreens $Screens ($Left + ($Width / 2.0)) ($Top + 12.0))
+    $rect = @{ Left = $Left; Top = $Top; Right = $Left + $Width; Bottom = $Top + [Math]::Max(48.0, $Height) }
+    $scr = Find-OverlayScreenForRect $Screens $rect
+    if ($ok) { return @{ Left = $Left; Top = $Top; Screen = $scr; Mode = "keep" } }
+    if ($null -ne $scr) {
+        $c = Limit-OverlayRectToScreen $scr $Left $Top $Width
+        return @{ Left = $c.Left; Top = $c.Top; Screen = $scr; Mode = "clamp" }
+    }
+    $fb = Get-OverlayPrimaryScreen $Screens $PreferredScreenName
+    $d = Get-OverlayDefaultPlacement $fb $Width
+    $c = Limit-OverlayRectToScreen $fb $d.Left $d.Top $Width
+    return @{ Left = $c.Left; Top = $c.Top; Screen = $fb; Mode = "fallback" }
+}
+# <<< OVERLAY-PLACEMENT-PURE
+
+function Get-OverlayDipScale {
+    $sx = 0.0; $sy = 0.0
+    try {
+        if ($script:MainWindow) {
+            $src = [System.Windows.PresentationSource]::FromVisual($script:MainWindow)
+            if ($src -and $src.CompositionTarget) {
+                $m = $src.CompositionTarget.TransformFromDevice
+                $sx = [double]$m.M11; $sy = [double]$m.M22
+            }
+        }
+    } catch {}
+    if (-not ($sx -gt 0) -or -not ($sy -gt 0)) {
+        try {
+            Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
+            $pb = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            if ($pb.Width -gt 0 -and $pb.Height -gt 0) {
+                $sx = [double][System.Windows.SystemParameters]::PrimaryScreenWidth / $pb.Width
+                $sy = [double][System.Windows.SystemParameters]::PrimaryScreenHeight / $pb.Height
+            }
+        } catch {}
+    }
+    if (-not ($sx -gt 0) -or [Double]::IsInfinity($sx)) { $sx = 1.0 }
+    if (-not ($sy -gt 0) -or [Double]::IsInfinity($sy)) { $sy = 1.0 }
+    return @{ X = $sx; Y = $sy }
+}
+
+# Work areas of ALL monitors in DIP (falls back to the primary work area if Forms is unavailable).
+function Get-OverlayScreensDip {
+    $sc = Get-OverlayDipScale
+    $list = New-Object System.Collections.ArrayList
+    try {
+        Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue
+        foreach ($s in [System.Windows.Forms.Screen]::AllScreens) {
+            $wa = $s.WorkingArea
+            if ($wa.Width -le 0 -or $wa.Height -le 0) { continue }
+            $r = ConvertTo-OverlayDipRect @{ Left = $wa.Left; Top = $wa.Top; Right = $wa.Right; Bottom = $wa.Bottom } $sc.X $sc.Y
+            $r.Name = [string]$s.DeviceName
+            $r.Primary = [bool]$s.Primary
+            [void]$list.Add($r)
+        }
+    } catch {}
+    if ($list.Count -eq 0) {
+        $wa = Get-WorkAreaSafe
+        [void]$list.Add(@{ Name = "primary"; Left = $wa.Left; Top = $wa.Top; Right = $wa.Right; Bottom = $wa.Bottom; Primary = $true })
+    }
+    return $list.ToArray()
+}
+
 # Anchored at the top-center of the work area. The window grows downward and stays horizontally centered on its
 # anchor as queues come and go; dragging moves the anchor, "reset position" puts it back at top-center.
 function Position-SharedOverlayWindow([switch]$ResetManualMove) {
     if (-not $script:MainWindow) { return }
-    if ($ResetManualMove) {
-        $script:UserMovedWindow = $false
-        $script:AnchorCenterX = $null
-        $script:AnchorTop = $null
-        if ($script:IsCollapsed) { Set-OverlayCollapsed $false }
-    }
-    $wa = Get-WorkAreaSafe
+    $screens = @(Get-OverlayScreensDip)
     $actW = $script:MainWindow.ActualWidth
     $w = if ((-not [Double]::IsNaN($actW)) -and $actW -gt 40.0) { $actW } else { 420.0 }
     $actH = $script:MainWindow.ActualHeight
     $h = if ((-not [Double]::IsNaN($actH)) -and $actH -gt 30.0) { $actH } else { 160.0 }
-
-    $cx = if ($null -ne $script:AnchorCenterX) { [double]$script:AnchorCenterX } else { ($wa.Left + $wa.Right) / 2.0 }
-    $top = if ($null -ne $script:AnchorTop) { [double]$script:AnchorTop } else { $wa.Top - 4.0 }   # outer margin is transparent
-
-    $left = $cx - ($w / 2.0)
-    $left = [Math]::Max($wa.Left - 10.0, [Math]::Min($wa.Right - $w + 10.0, $left))
-    $top  = [Math]::Max($wa.Top - 10.0, [Math]::Min($wa.Bottom - 48.0, $top))
-    $script:MainWindow.Left = [Math]::Round($left)
-    $script:MainWindow.Top  = [Math]::Round($top)
+    if ($ResetManualMove) {
+        # Explicit "Reset Position": top-center of the monitor the window is on now (not forcibly the primary one).
+        $l0 = [double]$script:MainWindow.Left; $t0 = [double]$script:MainWindow.Top
+        $curScr = $null
+        if (-not [Double]::IsNaN($l0) -and -not [Double]::IsNaN($t0)) {
+            $curScr = Find-OverlayScreenForRect $screens @{ Left = $l0; Top = $t0; Right = $l0 + $w; Bottom = $t0 + $h }
+        }
+        $script:UserMovedWindow = $false
+        $script:AnchorCenterX = $null
+        $script:AnchorTop = $null
+        $script:PendingAnchorPx = $null
+        $script:AnchorScreenName = if ($curScr) { [string]$curScr.Name } else { $null }
+        if ($script:IsCollapsed) { Set-OverlayCollapsed $false }
+        Remove-OverlayPositionFile
+    }
+    if ($script:PendingAnchorPx) {
+        # Saved in device px -> convert with the CURRENT DPI scale (robust to scaling % changes between sessions).
+        $sc = Get-OverlayDipScale
+        $script:AnchorCenterX = [double]$script:PendingAnchorPx.CenterX * $sc.X
+        $script:AnchorTop = [double]$script:PendingAnchorPx.Top * $sc.Y
+        $script:PendingAnchorPx = $null
+    }
+    if ($null -ne $script:AnchorCenterX -and $null -ne $script:AnchorTop) {
+        $left = [double]$script:AnchorCenterX - ($w / 2.0)
+        $top = [double]$script:AnchorTop
+    } else {
+        $homeScr = Get-OverlayPrimaryScreen $screens $script:AnchorScreenName
+        $d = Get-OverlayDefaultPlacement $homeScr $w
+        $left = $d.Left; $top = $d.Top
+    }
+    # The anchor itself is never rewritten here, so size changes (queues growing/shrinking) keep the user's spot.
+    $res = Resolve-OverlayPlacement $screens $left $top $w $h ([string]$script:AnchorScreenName)
+    $nl = [Math]::Round([double]$res.Left); $nt = [Math]::Round([double]$res.Top)
+    if ($script:MainWindow.Left -ne $nl) { $script:MainWindow.Left = $nl }
+    if ($script:MainWindow.Top -ne $nt) { $script:MainWindow.Top = $nt }
 }
 
 function Save-OverlayAnchorFromWindow {
@@ -2733,8 +2886,69 @@ function Save-OverlayAnchorFromWindow {
     if ([Double]::IsNaN($l) -or [Double]::IsNaN($t) -or [Double]::IsNaN($w)) { return }
     $script:AnchorCenterX = $l + ($w / 2.0)
     $script:AnchorTop = $t
+    $script:PendingAnchorPx = $null
     $script:UserMovedWindow = $true
+    $scr = $null
+    try {
+        $h = $script:MainWindow.ActualHeight; if ([Double]::IsNaN($h) -or $h -lt 48.0) { $h = 48.0 }
+        $scr = Find-OverlayScreenForRect @(Get-OverlayScreensDip) @{ Left = $l; Top = $t; Right = $l + $w; Bottom = $t + $h }
+        if ($scr) { $script:AnchorScreenName = [string]$scr.Name }
+    } catch {}
+    Save-OverlayPositionFile $scr
 }
+
+function Test-OverlayPositionPersistAllowed {
+    return ((-not $SelfTest) -and (-not $IsIsolatedSmoke) -and $IsRealDesktop)
+}
+
+function Save-OverlayPositionFile($Screen) {
+    if (-not (Test-OverlayPositionPersistAllowed)) { return }
+    if ($null -eq $script:AnchorCenterX -or $null -eq $script:AnchorTop) { return }
+    try {
+        $sc = Get-OverlayDipScale
+        $bounds = $null
+        if ($Screen) { $bounds = [ordered]@{ left = [double]$Screen.Left; top = [double]$Screen.Top; right = [double]$Screen.Right; bottom = [double]$Screen.Bottom } }
+        $payload = [ordered]@{
+            version         = 1
+            centerXPx       = [Math]::Round([double]$script:AnchorCenterX / $sc.X, 1)
+            topPx           = [Math]::Round([double]$script:AnchorTop / $sc.Y, 1)
+            centerXDip      = [Math]::Round([double]$script:AnchorCenterX, 1)
+            topDip          = [Math]::Round([double]$script:AnchorTop, 1)
+            dipPerPx        = [Math]::Round([double]$sc.X, 4)
+            screen          = [string]$script:AnchorScreenName
+            screenBoundsDip = $bounds
+            savedAt         = (Get-Date).ToString("o")
+        } | ConvertTo-Json -Compress -Depth 4
+        $dir = Split-Path -Parent $PositionFile
+        if (-not (Test-Path $dir)) { [void](New-Item -ItemType Directory -Path $dir -Force) }
+        [System.IO.File]::WriteAllText($PositionFile, $payload, (New-Object System.Text.UTF8Encoding($false)))
+    } catch { Write-OverlayErrorLog "SavePosition" $_ }
+}
+
+function Remove-OverlayPositionFile {
+    if (-not (Test-OverlayPositionPersistAllowed)) { return }
+    try { if (Test-Path $PositionFile) { Remove-Item $PositionFile -Force -ErrorAction SilentlyContinue } } catch {}
+}
+
+function Import-OverlayPositionFile {
+    if (-not (Test-OverlayPositionPersistAllowed)) { return }
+    if (-not (Test-Path $PositionFile)) { return }
+    try {
+        $p = Get-Content $PositionFile -Raw -ErrorAction Stop | ConvertFrom-Json
+        if ($null -ne $p.centerXPx -and $null -ne $p.topPx) {
+            $cx = [double]$p.centerXPx; $tp = [double]$p.topPx
+            if (-not ([Double]::IsNaN($cx) -or [Double]::IsInfinity($cx) -or [Double]::IsNaN($tp) -or [Double]::IsInfinity($tp))) {
+                $script:PendingAnchorPx = @{ CenterX = $cx; Top = $tp }
+                $script:UserMovedWindow = $true
+                $script:AnchorScreenName = if ($p.screen) { [string]$p.screen } else { $null }
+            }
+        }
+    } catch { Write-OverlayErrorLog "LoadPosition" $_ }
+}
+
+$script:PendingAnchorPx = $null
+$script:AnchorScreenName = $null
+Import-OverlayPositionFile
 
 function Set-OverlayCollapsed([bool]$Collapsed) {
     $script:IsCollapsed = $Collapsed
@@ -2832,6 +3046,9 @@ function Close-AllAndExit([switch]$UserInitiated) {
             [System.IO.File]::WriteAllText($MuteFile, $mutePayload, (New-Object System.Text.UTF8Encoding($false)))
         }
         $script:Pets.Clear()
+        if ($script:MainWindow -and $script:UserMovedWindow -and ($null -ne $script:AnchorCenterX)) {
+            try { Save-OverlayPositionFile $null } catch {}
+        }
         if ($script:MainWindow) {
             try { $script:MainWindow.Close() } catch {}
         }
