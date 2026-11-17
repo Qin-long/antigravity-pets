@@ -317,6 +317,7 @@ function buildAppAMainHookSnippet(suiteRoot, bridgeScriptPath, overlayLauncherPa
     '                        if (global.__pkmnOverlayLastAutoAt && now - global.__pkmnOverlayLastAutoAt < 180000) return;',
     '                        global.__pkmnOverlayAutoStarted = true;',
     '                        global.__pkmnOverlayLastAutoAt = now;',
+    "                        try { const _pkmnCfg = JSON.parse(_pkmnFs.readFileSync(_pkmnPath.join(_pkmnOs.homedir(), '.gemini', 'config', 'plugins', 'pokemon-agent-pets', 'workspace-config.json'), 'utf8').replace(/^\\uFEFF/, '')); if (_pkmnCfg && _pkmnCfg.autoShowDesktopPet === false) return; } catch (_ecfg) {}",
     '                        if (_pkmnFs.existsSync(_pkmnMuteFile)) return;',
     '                        if (_getPkmnOverlayState()) return;',
     "                        _runPkmnSilentVbs([...basePsArgs, '-FromWatchdog']);",

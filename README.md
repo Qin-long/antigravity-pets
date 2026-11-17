@@ -61,7 +61,7 @@
 
 ### 🔒 轻量、只在本机运行
 - 后台只有一个本地小服务（`127.0.0.1:17580`），**只读**本机的会话记录，不上传任何数据；
-- 只用 Node.js 自带功能，**不需要 `npm install`**；后台静默运行，不弹命令行窗口。
+- 需要 **Node.js v24+**，但只用 Node.js 自带功能，**不需要 `npm install` 任何包**；后台静默运行，不弹命令行窗口。
 
 > 每项功能的详细说明、操作方式与实现原理见 **[docs/FEATURES.md](docs/FEATURES.md)**。
 
@@ -77,6 +77,24 @@
 
 ## 🚀 快速开始
 
+### 一键安装（推荐，不需要会命令行）
+
+1. 在 GitHub 页面点 **Code → Download ZIP** 下载，并把压缩包**全部解压**到任意文件夹（也可以 `git clone`）。
+2. 双击文件夹里的 **`install.cmd`**（Windows 若提示「已保护你的电脑」，点「更多信息 → 仍要运行」）。
+3. 按提示操作：
+   - 没有 Node.js v24+ 时，安装程序会询问并通过系统自带的 `winget` 安装 Node.js LTS（没有 `winget` 会打开下载页）；
+   - 只为已安装的 Antigravity IDE / Antigravity 2.0 做对应步骤；2.0 正在运行时可以选择「等它退出后自动继续」；
+   - 选一个主题（直接回车 = `mewtwo`），然后自动完成安装和自检。
+4. 按最后的提示收尾：
+   - **Antigravity IDE**：按 `Ctrl+R`（`Developer: Reload Window`）。
+   - **Antigravity 2.0**：在 **Customizations** 界面手动开启 `pokemon-agent-pets`（安装程序不会修改 `~/.gemini/config/config.json`），然后完全退出 app（含托盘图标）再打开。
+
+装好后，打开 Antigravity IDE 或 Antigravity 2.0 时，后台服务和桌面浮窗会**自动跟着启动**；在浮窗上点 `[×]` 关闭后，本次运行期间不会再自动弹出。不希望 2.0 打开时自动弹出，可把 `~/.gemini/config/plugins/pokemon-agent-pets/workspace-config.json` 中的 `autoShowDesktopPet` 改为 `false`。
+
+> **安装位置**：从下载的文件夹安装时，套件会被复制到 `%LOCALAPPDATA%\AntigravityPets\` 再安装，之后可以删除下载的文件夹；从带 `.git` 的开发副本安装时则原地安装（开发模式），请不要移动或删除该文件夹。想先看看会做什么，可在命令行运行 `install.cmd -DryRun`。
+
+### 命令行安装（进阶）
+
 ```powershell
 git clone https://github.com/Qin-long/antigravity-pets.git
 cd antigravity-pets
@@ -86,7 +104,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\start-pokemon-ide.ps1 
 ```
 
 - **Antigravity IDE**：执行后按 `Ctrl+R`（`Developer: Reload Window`）生效。
-- **Antigravity 2.0**：注入全局皮肤前请**先完全退出 app**（运行中 `app.asar` 被占用会提示失败），注入后再打开。
+- **Antigravity 2.0**：注入全局皮肤前请**先完全退出 app**（运行中 `app.asar` 被占用时，会在后台等待 app 退出后再自动写入），注入后再打开。
 - **副屏插件**：同步完成后，在 Antigravity 的 **Customizations** 界面手动开启 `pokemon-agent-pets`（脚本不会修改 `~/.gemini/config/config.json`）。
 
 ### 常用命令
@@ -124,10 +142,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\start-pokemon-ide.ps1 
 
 ```text
 antigravity-pets/
+├── install.cmd / uninstall.cmd        # 双击一键安装 / 一键卸载（逻辑在 installer/install.ps1、installer/uninstall.ps1）
 ├── start-pokemon-ide.ps1              # 一键启动 / 安装 / 还原 / 停止入口
 ├── start-antigravity-with-pets.cmd    # 同启 Antigravity + 桌面浮窗
 ├── restart-and-patch-antigravity.cmd  # 辅助脚本：结束 app 后替换已暂存的 app.asar 并重启
-├── bridge/                            # 零依赖本地状态桥（127.0.0.1:17580）
+├── bridge/                            # 本地状态桥（127.0.0.1:17580，需 Node.js v24+，无 npm 依赖）
 │   ├── agent-monitor.mjs              #   REST + SSE 主服务，聚合会话 / 子智能体 / 列队
 │   ├── hook-handler.mjs               #   可选的非阻塞生命周期钩子
 │   ├── pet-packs.mjs / describe-pack.mjs / pokemon-gacha.mjs   # 皮肤包与图鉴抽卡
@@ -144,7 +163,7 @@ antigravity-pets/
 │   ├── sync-plugin.ps1                #   同步插件到 ~/.gemini/config/plugins/（支持 -DryRun）
 │   └── pokemon-agent-pets/            #   Antigravity 2.0 副屏插件（sidecars/pet-arena、hooks、skills、vendor）
 ├── packs/critters/                    # 默认皮肤包「像素小伙伴」（原创，CC0）
-├── tools/                             # 零依赖皮肤包生成 / 导出脚本
+├── tools/                             # 皮肤包生成 / 导出脚本（无 npm 依赖）
 ├── assets/                            # 共享前端脚本 + 宝可梦精灵素材（非 MIT，见 NOTICE.md）
 ├── docs/architecture.md               # 架构与状态桥接口契约
 └── docs/FEATURES.md                   # 功能详解
@@ -183,6 +202,10 @@ flowchart LR
 - `pack.json` 格式可参考 [packs/critters/pack.json](packs/critters/pack.json)；舞台「设置 → 皮肤包」或副屏工具栏可随时切换。
 
 ## 🧹 卸载与还原
+
+**一键卸载（推荐）**：先在 Antigravity 2.0 的 Customizations 中关闭 `pokemon-agent-pets`，再双击套件文件夹（复制安装时为 `%LOCALAPPDATA%\AntigravityPets\`）里的 **`uninstall.cmd`**。它会还原客户端原始文件、停止后台与浮窗、卸载 IDE 扩展、删除 `~/.gemini/config/plugins/pokemon-agent-pets/` 和复制安装的目录，并询问是否同时删除 `~/.gemini/antigravity/pet-packs/`（同样不会修改 `config.json`，支持 `-DryRun` 预演）。
+
+**手动卸载（进阶）**：
 
 ```powershell
 # 1. 还原 Antigravity 客户端原始文件（从 *.pokemon-backup 恢复，含 product.json 校验和）

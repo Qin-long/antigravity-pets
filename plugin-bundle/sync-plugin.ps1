@@ -86,9 +86,19 @@ $HooksPayload = [ordered]@{
 $HooksJson = ($HooksPayload | ConvertTo-Json -Depth 6) + "`n"
 
 # Record workspaceRoot in workspace-config.json (BOM-free UTF-8 so Node JSON.parse succeeds cleanly!)
-$WsConfigJson = (@{
-    workspaceRoot = $WorkspaceRoot
-    syncedAt      = (Get-Date).ToString("o")
+# `autoShowDesktopPet` (pet-arena: pop the desktop overlay when Antigravity 2.0 starts) keeps the user's value on re-sync.
+$AutoShowDesktopPet = $true
+$ExistingWsConfig = Join-Path $TargetRoot "workspace-config.json"
+if (Test-Path -LiteralPath $ExistingWsConfig) {
+    try {
+        $prevCfg = [System.IO.File]::ReadAllText($ExistingWsConfig) | ConvertFrom-Json
+        if ($prevCfg -and ($prevCfg.autoShowDesktopPet -is [bool])) { $AutoShowDesktopPet = $prevCfg.autoShowDesktopPet }
+    } catch {}
+}
+$WsConfigJson = ([ordered]@{
+    workspaceRoot      = $WorkspaceRoot
+    autoShowDesktopPet = $AutoShowDesktopPet
+    syncedAt           = (Get-Date).ToString("o")
 } | ConvertTo-Json -Depth 3)
 
 # NOTE: machine-specific workspace-config.json (absolute workspaceRoot) and hooks.json (resolved node.exe path) are written

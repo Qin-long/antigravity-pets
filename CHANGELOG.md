@@ -4,6 +4,7 @@
 
 ## [Unreleased]
 
+- **双击一键安装 / 卸载**：新增根目录 `install.cmd`、`uninstall.cmd` 与 `installer/install.ps1`、`installer/uninstall.ps1`（中文提示，支持 `-DryRun`）。安装程序会去掉下载标记、检测 Node.js v24+（缺失时经 `winget` 安装 `OpenJS.NodeJS.LTS`）、只为已安装的客户端做对应步骤、下载副本复制到 `%LOCALAPPDATA%\AntigravityPets\` 后安装（带 `.git` 的开发副本原地安装），并在安装后自检状态桥、扩展、插件与皮肤备份；卸载程序还原皮肤、停止后台、移除扩展与插件目录。两者都不修改 `~/.gemini/config/config.json`。Antigravity 2.0 启动时副屏插件会自动弹出桌宠浮窗（上次运行中点 `[×]` 留下的静音标记会被忽略，本次运行中点 `[×]` 后不再自动弹出），可用插件 `workspace-config.json` 的 `autoShowDesktopPet: false` 关闭；文档中「零依赖」改为「需要 Node.js v24+，但不需要 `npm install` 任何包」。
 - 首次以 MIT 许可开源：新增 `LICENSE`、`NOTICE.md`、`CONTRIBUTING.md`、`.gitignore`、`.gitattributes`，重写 `README.md`，并对文档与配置中的本机路径做了脱敏。
 - **全链路性能优化**：状态桥引入 `subagentDirCache` / `oldConvSubagentScanned` 目录缓存、`transcriptCache` LRU 有界缓存、`SCAN_MIN_INTERVAL_MS` 扫描节流、紧凑 JSON 响应及 `GET /api/agents` `ETag / 304`；WPF 桌宠支持 `If-None-Match` 缓存短路、精灵包 `24` 槽位 LRU 淘汰与空闲自适应帧率；注入脚本精简 `MutationObserver` 与 SSE 在线兜底轮询。
 - **底部模型旁上下文圆环与推理遥测 Hover 面板**：状态桥 `extractPerfTelemetry` 从 `transcript.jsonl` 实时计算 `tps`、`avgTps`、`ttfpMs`、`lastTurnDurationMs`、`totalOutputTokens` 与 `remainingTokens`；客户端在模型选择器（兼容 `Orchestrator (Carbon/Argon)`、`Claude`、`Gemini` 等）同行右侧挂载 SVG 上下文圆环，悬停弹出展示已用上下文、TPS、TTFP、KV 缓存命中率及 Token 明细（空白新会话自动归零防串台）。

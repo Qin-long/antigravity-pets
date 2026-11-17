@@ -8,7 +8,7 @@
 
 import { SidecarApp, Response } from 'sidecar_sdk';
 import { execFile } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, unlinkSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, unlinkSync } from 'node:fs';
 import { connect } from 'node:net';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -110,6 +110,57 @@ function resolveWorkspaceRoot() {
     } catch {}
   }
   return resolve(PLUGIN_ROOT, '..', '..');
+}
+
+/**
+ * `autoShowDesktopPet` switch in the plugin's `workspace-config.json` (written by sync-plugin.ps1, which keeps the
+ * user's value on re-sync). Default on. Off = the app never pops / revives the desktop overlay by itself; explicit
+ * summons still work. Read on every use, so editing the file takes effect without restarting the app.
+ */
+function isAutoShowDesktopPetEnabled() {
+  try {
+    const cfg = JSON.parse(readFileSync(join(PLUGIN_ROOT, 'workspace-config.json'), 'utf-8').replace(/^\uFEFF/, ''));
+    return cfg?.autoShowDesktopPet !== false;
+  } catch {
+    return true;
+  }
+}
+
+/** Start time (ms) of the oldest running `Antigravity.exe`, i.e. when this app run began; 0 if unknown. */
+function getAppRunStartMs() {
+  return new Promise((resolveStart) => {
+    if (process.platform !== 'win32') return resolveStart(0);
+    const ps = "$p = Get-Process -Name Antigravity -ErrorAction SilentlyContinue | Sort-Object StartTime | Select-Object -First 1; if ($p) { $p.StartTime.ToUniversalTime().ToString('o') }";
+    try {
+      execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps], { timeout: 8000, windowsHide: true }, (err, stdout) => {
+        const ms = err ? 0 : Date.parse(String(stdout || '').trim());
+        resolveStart(Number.isFinite(ms) ? ms : 0);
+      });
+    } catch {
+      resolveStart(0);
+    }
+  });
+}
+
+/**
+ * The mute file (written when the user clicks the overlay's [×] / "收回") outlives the app. A mute from an EARLIER
+ * app run must not keep the pet hidden forever, so it is dropped here; a mute from THIS run is kept and honored.
+ */
+async function clearStaleOverlayMute() {
+  if (!existsSync(OVERLAY_MUTE_FILE)) return;
+  let mutedAt = 0;
+  try {
+    const st = JSON.parse(readFileSync(OVERLAY_MUTE_FILE, 'utf-8').replace(/^\uFEFF/, ''));
+    mutedAt = Date.parse(String(st?.mutedAt || '')) || 0;
+  } catch {}
+  if (!mutedAt) {
+    try { mutedAt = statSync(OVERLAY_MUTE_FILE).mtimeMs || 0; } catch {}
+  }
+  const appStart = (await getAppRunStartMs()) || (Date.now() - process.uptime() * 1000);
+  if (mutedAt && mutedAt < appStart - 2000) {
+    try { unlinkSync(OVERLAY_MUTE_FILE); } catch {}
+    console.log('[pet-arena] dropped desktop-overlay mute left over from a previous app run');
+  }
 }
 
 /**
@@ -336,20 +387,24 @@ function invokeDesktopPetLauncher({
 }
 
 /**
- * Auto-launch Bridge + IDE-bound Shared Floating Overlay AT MOST ONCE per Sidecar startup
- * (and 0 retries if muted or already running!).
+ * Auto-launch Bridge + IDE-bound Shared Floating Overlay AT MOST ONCE per Sidecar startup (= app start):
+ * a [×] mute left over from a previous app run is dropped first, a mute from this run is honored, and the
+ * launcher's single-instance check (`launch-desktop-pet.ps1` + overlay mutex) prevents a second window.
  */
-function autoStartWithAntigravityHost() {
+async function autoStartWithAntigravityHost() {
   ensureBridgeStarted();
   if (process.platform !== 'win32') return;
   if (hasAutoLaunchedOverlayOnce) return;
   hasAutoLaunchedOverlayOnce = true;
+  if (!isAutoShowDesktopPetEnabled()) return;
+  await clearStaleOverlayMute();
   reviveOverlayIfGone();
 }
 
 /** Start the shared overlay when it is not running and the user has not put it away ("收回"). Throttled. */
 function reviveOverlayIfGone() {
   if (process.platform !== 'win32') return;
+  if (!isAutoShowDesktopPetEnabled()) return;
   if (existsSync(OVERLAY_MUTE_FILE)) return;
   if (isOverlayProcessAlive()) return;
   const now = Date.now();
@@ -364,7 +419,7 @@ function reviveOverlayIfGone() {
 }
 
 startHostLivenessWatch();
-autoStartWithAntigravityHost();
+void autoStartWithAntigravityHost();
 startBridgeWatchdog();
 
 const app = new SidecarApp();
