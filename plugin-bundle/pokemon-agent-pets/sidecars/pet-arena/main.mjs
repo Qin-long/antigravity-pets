@@ -386,6 +386,23 @@ function invokeDesktopPetLauncher({
   };
 }
 
+function healGlobalSkinIfUpdated() {
+  if (process.platform !== 'win32') return;
+  try {
+    const skinStateFile = join(homedir(), '.gemini', 'antigravity', 'pokemon-skin-state.json');
+    if (!existsSync(skinStateFile)) return;
+    const state = JSON.parse(readFileSync(skinStateFile, 'utf8'));
+    if (!state || state.enabled !== true) return;
+    const wsRoot = resolveWorkspaceRoot();
+    const patchEngine = join(wsRoot, 'vscode-pokemon-theme', 'full-app-skin', 'patch-engine.mjs');
+    if (!existsSync(patchEngine)) return;
+    const nodeBin = resolveNodeExe();
+    execFile(nodeBin, [patchEngine, 'heal', '--spawn-swap-watcher'], { windowsHide: true, timeout: 25_000 }, () => {});
+  } catch {
+    // Non-fatal
+  }
+}
+
 /**
  * Auto-launch Bridge + IDE-bound Shared Floating Overlay AT MOST ONCE per Sidecar startup (= app start):
  * a [×] mute left over from a previous app run is dropped first, a mute from this run is honored, and the
@@ -394,6 +411,7 @@ function invokeDesktopPetLauncher({
 async function autoStartWithAntigravityHost() {
   ensureBridgeStarted();
   if (process.platform !== 'win32') return;
+  healGlobalSkinIfUpdated();
   if (hasAutoLaunchedOverlayOnce) return;
   hasAutoLaunchedOverlayOnce = true;
   if (!isAutoShowDesktopPetEnabled()) return;

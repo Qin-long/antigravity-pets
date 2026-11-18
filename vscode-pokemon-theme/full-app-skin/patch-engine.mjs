@@ -13,8 +13,10 @@
  *       * out/main.js ESM hook (with .pokemon-backup byte-exact restore) using wscript.exe silent launcher
  */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -23,24 +25,35 @@ const __dirname = path.dirname(__filename);
 const VALID_THEMES = new Set(['mewtwo', 'pikachu', 'gengar', 'charizard', 'umbreon', 'pokedex-light']);
 
 function parseArgs(argv) {
-  const mode = argv[2] === 'restore' ? 'restore' : 'apply';
+  const rawMode = argv[2];
+  const mode =
+    rawMode === 'restore' || rawMode === 'heal' || rawMode === 'swap-wait'
+      ? rawMode
+      : 'apply';
   let theme = 'mewtwo';
+  let themeProvided = false;
   let only = '';
+  let spawnSwapWatcher = false;
   for (let i = 3; i < argv.length; i++) {
     if (argv[i] === '--only' && argv[i + 1]) {
       only = argv[i + 1] === 'app-a' ? 'app-a' : argv[i + 1] === 'app-b' ? 'app-b' : '';
       i++;
       continue;
     }
+    if (argv[i] === '--spawn-swap-watcher') {
+      spawnSwapWatcher = true;
+      continue;
+    }
     if ((argv[i] === '--theme' || argv[i] === '-t') && argv[i + 1]) {
       const candidate = argv[i + 1].toLowerCase().trim();
       if (VALID_THEMES.has(candidate)) {
         theme = candidate;
+        themeProvided = true;
       }
       i++;
     }
   }
-  return { mode, theme, only };
+  return { mode, theme, themeProvided, only, spawnSwapWatcher };
 }
 
 function sha256Base64NoPad(filePath) {
@@ -1111,15 +1124,142 @@ function restoreAppB(localAppData) {
   return { restored: didRestore, path: appBRoot };
 }
 
-function main() {
-  const { mode, theme, only } = parseArgs(process.argv);
+const SKIN_STATE_FILE = path.join(os.homedir(), '.gemini', 'antigravity', 'pokemon-skin-state.json');
+const SWAP_WATCHER_PID_FILE = path.join(os.tmpdir(), 'antigravity-pokemon-asar-swap.pid');
+
+function readSkinState() {
+  try {
+    if (!fs.existsSync(SKIN_STATE_FILE)) return null;
+    const raw = fs.readFileSync(SKIN_STATE_FILE, 'utf8');
+    const obj = JSON.parse(raw);
+    return obj && typeof obj === 'object' ? obj : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSkinState(enabled, theme) {
+  try {
+    fs.mkdirSync(path.dirname(SKIN_STATE_FILE), { recursive: true });
+    const payload = {
+      enabled: Boolean(enabled),
+      theme: VALID_THEMES.has(theme) ? theme : 'mewtwo',
+      updatedAt: new Date().toISOString()
+    };
+    fs.writeFileSync(SKIN_STATE_FILE, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+  } catch {
+    // Non-fatal
+  }
+}
+
+function isPidAlive(pid) {
+  if (!Number.isFinite(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function spawnAppASwapWatcher() {
+  try {
+    if (fs.existsSync(SWAP_WATCHER_PID_FILE)) {
+      const prevPid = Number(fs.readFileSync(SWAP_WATCHER_PID_FILE, 'utf8').trim());
+      if (isPidAlive(prevPid)) {
+        return { spawned: false, alreadyRunning: true, pid: prevPid };
+      }
+    }
+    if (process.platform === 'win32') {
+      // Spawn via WMI Win32_Process.Create so the watcher breaks out of Electron/Node's Job Object
+      // and survives when the user closes Antigravity.exe to release the app.asar file lock.
+      const cmdLine = `"${process.execPath}" "${__filename}" swap-wait`.replace(/'/g, "''");
+      const psCmd = `Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = '${cmdLine}' } | Out-Null`;
+      const child = spawn(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-Command', psCmd],
+        { detached: true, stdio: 'ignore', windowsHide: true }
+      );
+      child.unref();
+      return { spawned: true, method: 'wmi-breakaway' };
+    }
+    const child = spawn(process.execPath, [__filename, 'swap-wait'], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true
+    });
+    child.unref();
+    return { spawned: true, pid: child.pid || null };
+  } catch (err) {
+    return { spawned: false, error: err?.message || String(err) };
+  }
+}
+
+async function runSwapWait(localAppData) {
+  const asarPath = path.join(localAppData, 'Programs', 'antigravity', 'resources', 'app.asar');
+  const stagedPath = `${asarPath}.pokemon-new`;
+  if (!fs.existsSync(stagedPath)) return { swapped: false, reason: 'no-staged-file' };
+
+  try {
+    fs.writeFileSync(SWAP_WATCHER_PID_FILE, String(process.pid), 'utf8');
+  } catch {}
+
+  const deadlineMs = Date.now() + 6 * 3600 * 1000;
+  try {
+    while (Date.now() < deadlineMs) {
+      if (!fs.existsSync(stagedPath)) {
+        return { swapped: false, reason: 'staged-removed' };
+      }
+      if (swapFileInto(stagedPath, asarPath)) {
+        return { swapped: true, asarPath };
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+    return { swapped: false, reason: 'timeout' };
+  } finally {
+    try {
+      if (fs.existsSync(SWAP_WATCHER_PID_FILE)) {
+        const cur = Number(fs.readFileSync(SWAP_WATCHER_PID_FILE, 'utf8').trim());
+        if (cur === process.pid) fs.unlinkSync(SWAP_WATCHER_PID_FILE);
+      }
+    } catch {}
+  }
+}
+
+async function main() {
+  const { mode, theme, themeProvided, only, spawnSwapWatcher } = parseArgs(process.argv);
   const localAppData = process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE || '', 'AppData', 'Local');
   const skipped = { skipped: true };
+
+  if (mode === 'swap-wait') {
+    const res = await runSwapWait(localAppData);
+    console.log(JSON.stringify({ ok: true, mode: 'swap-wait', ...res }));
+    return;
+  }
 
   if (mode === 'restore') {
     const resA = only === 'app-b' ? skipped : restoreAppA(localAppData);
     const resB = only === 'app-a' ? skipped : restoreAppB(localAppData);
+    writeSkinState(false, theme);
     console.log(JSON.stringify({ ok: true, mode: 'restore', appA: resA, appB: resB }, null, 2));
+    return;
+  }
+
+  if (mode === 'heal') {
+    const state = readSkinState();
+    if (!state || state.enabled !== true) {
+      console.log(JSON.stringify({ ok: true, mode: 'heal', healed: false, reason: 'skin-not-enabled' }));
+      return;
+    }
+    const targetTheme = themeProvided ? theme : (VALID_THEMES.has(state.theme) ? state.theme : 'mewtwo');
+    const assets = getStampedSkinAssets(targetTheme);
+    const resA = only === 'app-b' ? skipped : applyAppA(localAppData, targetTheme, assets);
+    const resB = only === 'app-a' ? skipped : applyAppB(localAppData, targetTheme, assets);
+    let watcher = null;
+    if (resA && resA.asar === 'locked' && spawnSwapWatcher) {
+      watcher = spawnAppASwapWatcher();
+    }
+    console.log(JSON.stringify({ ok: true, mode: 'heal', theme: targetTheme, appA: resA, appB: resB, watcher }, null, 2));
     return;
   }
 
@@ -1129,7 +1269,12 @@ function main() {
   if (!resA.found && !resB.found && !resA.skipped && !resB.skipped) {
     throw new Error(`Neither Antigravity 2.0 nor Antigravity IDE found under ${localAppData}\\Programs`);
   }
-  console.log(JSON.stringify({ ok: true, mode: 'apply', theme, appA: resA, appB: resB }, null, 2));
+  writeSkinState(true, theme);
+  let watcher = null;
+  if (resA && resA.asar === 'locked' && spawnSwapWatcher) {
+    watcher = spawnAppASwapWatcher();
+  }
+  console.log(JSON.stringify({ ok: true, mode: 'apply', theme, appA: resA, appB: resB, watcher }, null, 2));
 }
 
 main();
