@@ -242,7 +242,25 @@ function maybeAutowakeOnWindows(eventName, bridgePostFailed) {
 
     const needBridge = Boolean(bridgePostFailed);
     const needOverlay = !overlayAlive && !overlayMuted;
-    if (!needBridge && !needOverlay) return;
+
+    // Detect if Antigravity client auto-updated and overwrote app.asar while global skin is enabled.
+    let needSkinHeal = false;
+    try {
+      const skinStatePath = join(homedir(), '.gemini', 'antigravity', 'pokemon-skin-state.json');
+      if (existsSync(skinStatePath)) {
+        const skinState = JSON.parse(readFileSync(skinStatePath, 'utf8'));
+        if (skinState && skinState.enabled === true) {
+          const localAppData = process.env.LOCALAPPDATA || join(homedir(), 'AppData', 'Local');
+          const asarPath = join(localAppData, 'Programs', 'antigravity', 'resources', 'app.asar');
+          const stagedPath = `${asarPath}.pokemon-new`;
+          if (existsSync(asarPath) && !existsSync(stagedPath)) {
+            needSkinHeal = true;
+          }
+        }
+      }
+    } catch {}
+
+    if (!needBridge && !needOverlay && !needSkinHeal) return;
 
     const now = Date.now();
     if (existsSync(stampFile)) {
@@ -264,6 +282,18 @@ function maybeAutowakeOnWindows(eventName, bridgePostFailed) {
     const wscriptCandidate = join(sysRoot, 'System32', 'wscript.exe');
     const wscriptExe = existsSync(wscriptCandidate) ? wscriptCandidate : 'wscript.exe';
     const spawnOpts = { detached: true, stdio: 'ignore', windowsHide: true };
+
+    if (needSkinHeal) {
+      const patchEngine = join(WORKSPACE_ROOT, 'vscode-pokemon-theme', 'full-app-skin', 'patch-engine.mjs');
+      if (existsSync(patchEngine)) {
+        const child = spawn(
+          wscriptExe,
+          ['//B', '//Nologo', silentVbs, process.execPath, patchEngine, 'heal', '--spawn-swap-watcher'],
+          spawnOpts
+        );
+        child.unref();
+      }
+    }
 
     if (needBridge) {
       const monitorScript = join(WORKSPACE_ROOT, 'bridge', 'agent-monitor.mjs');

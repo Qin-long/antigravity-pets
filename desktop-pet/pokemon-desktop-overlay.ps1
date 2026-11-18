@@ -2139,11 +2139,12 @@ function Apply-ThemePalette([string]$ThemeKey, [switch]$FromBridge) {
     if (-not $THEMES.ContainsKey($ThemeKey)) { $ThemeKey = "mewtwo" }
     $script:CurrentTheme = $ThemeKey
     $pal = $THEMES[$ThemeKey]
+    $ghostTransparent = ($script:IsClickThrough -and (-not $script:PeekActive))
 
     if ($script:MainRefs) {
         $r = $script:MainRefs
-        $r.RootBorder.Background  = Get-Brush "#A612111A"
-        $r.RootBorder.BorderBrush = Get-Brush "#18FFFFFF"
+        $r.RootBorder.Background  = if ($ghostTransparent) { [System.Windows.Media.Brushes]::Transparent } else { Get-Brush "#A612111A" }
+        $r.RootBorder.BorderBrush = if ($ghostTransparent) { [System.Windows.Media.Brushes]::Transparent } else { Get-Brush "#18FFFFFF" }
         $r.TitleText.Foreground   = Get-Brush $pal.Text
         $r.SummaryText.Foreground = Get-Brush $pal.Muted
         $r.LedOrb.Fill            = Get-Brush $pal.Accent
@@ -2151,7 +2152,7 @@ function Apply-ThemePalette([string]$ThemeKey, [switch]$FromBridge) {
         $r.SessionBannerBorder.BorderBrush = Get-Brush $pal.Accent
         $r.SessionBannerTitle.Foreground   = Get-Brush $pal.Text
         $r.SessionBannerSub.Foreground     = Get-Brush $pal.Muted
-        $r.GhostNotice.Background          = Get-Brush $pal.Surface
+        $r.GhostNotice.Background          = if ($ghostTransparent) { [System.Windows.Media.Brushes]::Transparent } else { Get-Brush $pal.Surface }
         $r.GhostNoticeText.Foreground      = Get-Brush $pal.Muted
         foreach ($b in @($r.BtnGhost, $r.BtnCollapse, $r.BtnMenu, $r.BtnClose)) {
             $b.Foreground = Get-Brush $pal.Text
@@ -2159,7 +2160,7 @@ function Apply-ThemePalette([string]$ThemeKey, [switch]$FromBridge) {
     }
     foreach ($pb in $script:ProjectBorders) {
         $pb.Background  = [System.Windows.Media.Brushes]::Transparent
-        $pb.BorderBrush = Get-Brush "#16FFFFFF"
+        $pb.BorderBrush = if ($ghostTransparent) { [System.Windows.Media.Brushes]::Transparent } else { Get-Brush "#16FFFFFF" }
     }
     foreach ($tb in $script:ProjectTitleTexts) {
         $tb.Foreground = Get-Brush $pal.Muted
@@ -2618,6 +2619,23 @@ function Get-OverlayHwnd {
     try { return (New-Object System.Windows.Interop.WindowInteropHelper($script:MainWindow)).Handle } catch { return [IntPtr]::Zero }
 }
 
+function Update-OverlayGhostAppearance([bool]$GhostTransparent) {
+    $pal = $THEMES[$script:CurrentTheme]
+    if (-not $pal) { $pal = $THEMES["mewtwo"] }
+    if ($script:MainWindow) {
+        $script:MainWindow.Opacity = 1.0
+    }
+    if ($script:MainRefs) {
+        $r = $script:MainRefs
+        $r.RootBorder.Background  = if ($GhostTransparent) { [System.Windows.Media.Brushes]::Transparent } else { Get-Brush "#A612111A" }
+        $r.RootBorder.BorderBrush = if ($GhostTransparent) { [System.Windows.Media.Brushes]::Transparent } else { Get-Brush "#18FFFFFF" }
+        $r.GhostNotice.Background = if ($GhostTransparent) { [System.Windows.Media.Brushes]::Transparent } else { Get-Brush $pal.Surface }
+    }
+    foreach ($pb in $script:ProjectBorders) {
+        $pb.BorderBrush = if ($GhostTransparent) { [System.Windows.Media.Brushes]::Transparent } else { Get-Brush "#16FFFFFF" }
+    }
+}
+
 # Click-through ("ghost") mode. While it is on the window ignores the mouse entirely, so it can be turned off from:
 #   - the tray icon (left-click or menu),  - the global hotkey Ctrl+Alt+P,
 #   - holding Ctrl while hovering the overlay (temporarily interactive until Ctrl is released).
@@ -2626,8 +2644,8 @@ function Set-PetClickThroughAll([bool]$Enable) {
     $script:PeekActive = $false
     if ($script:MainWindow) {
         [PokemonOverlayWin32]::SetClickThrough((Get-OverlayHwnd), $Enable)
-        $script:MainWindow.Opacity = if ($Enable) { 0.82 } else { 1.0 }
     }
+    Update-OverlayGhostAppearance $Enable
     if ($script:MainRefs) {
         $script:MainRefs.GhostBtnText.Text = if ($Enable) { [string][char]0x25C9 } else { [string][char]0x25CE }
         $script:MainRefs.BtnGhost.ToolTip = if ($Enable) { $TXT.GhostOffTip } else { $TXT.GhostOnTip }
@@ -2654,11 +2672,11 @@ function Update-ClickThroughInput {
     if ($wantPeek -and (-not $script:PeekActive)) {
         $script:PeekActive = $true
         [PokemonOverlayWin32]::SetClickThrough($hwnd, $false)
-        $script:MainWindow.Opacity = 1.0
+        Update-OverlayGhostAppearance $false
     } elseif ((-not $wantPeek) -and $script:PeekActive -and ([System.Windows.Input.Mouse]::Captured -eq $null)) {
         $script:PeekActive = $false
         [PokemonOverlayWin32]::SetClickThrough($hwnd, $true)
-        $script:MainWindow.Opacity = 0.82
+        Update-OverlayGhostAppearance $true
     }
 }
 
@@ -2995,7 +3013,7 @@ function Force-ShowSharedOverlayWindow([switch]$ResetManualMove) {
     $script:HiddenForNoHostWindow = $false
     $script:NoHostWindowSince = $null
     $script:MainWindow.Visibility = [System.Windows.Visibility]::Visible
-    $script:MainWindow.Opacity = if ($script:IsClickThrough) { 0.82 } else { 1.0 }
+    Update-OverlayGhostAppearance ($script:IsClickThrough -and (-not $script:PeekActive))
     $script:MainWindow.Topmost = $true
     try {
         $hwnd = (New-Object System.Windows.Interop.WindowInteropHelper($script:MainWindow)).EnsureHandle()
@@ -3915,7 +3933,7 @@ function Sync-QueuesToPets([array]$QueueRows) {
             $pBorder.Padding = if ($isDenseQueues) { New-Object System.Windows.Thickness(2, 3, 2, 1) } else { New-Object System.Windows.Thickness(2, 4, 2, 2) }
             $pBorder.Margin = if ($isDenseQueues) { New-Object System.Windows.Thickness(0, 1, 0, 2) } else { New-Object System.Windows.Thickness(0, 2, 0, 3) }
             $pBorder.Background = [System.Windows.Media.Brushes]::Transparent
-            $pBorder.BorderBrush = Get-Brush "#16FFFFFF"
+            $pBorder.BorderBrush = if ($script:IsClickThrough -and (-not $script:PeekActive)) { [System.Windows.Media.Brushes]::Transparent } else { Get-Brush "#16FFFFFF" }
             [void]$script:ProjectBorders.Add($pBorder)
 
             $pStack = New-Object System.Windows.Controls.StackPanel

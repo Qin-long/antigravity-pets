@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { spawn } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1171,17 +1171,20 @@ function spawnAppASwapWatcher() {
       }
     }
     if (process.platform === 'win32') {
-      // Spawn via WMI Win32_Process.Create so the watcher breaks out of Electron/Node's Job Object
-      // and survives when the user closes Antigravity.exe to release the app.asar file lock.
+      // Synchronously invoke WMI Win32_Process.Create so the watcher breaks out of Electron/Node's
+      // Job Object BEFORE patch-engine.mjs exits, surviving when Antigravity.exe closes.
       const cmdLine = `"${process.execPath}" "${__filename}" swap-wait`.replace(/'/g, "''");
-      const psCmd = `Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = '${cmdLine}' } | Out-Null`;
-      const child = spawn(
+      const psCmd = `$r = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = '${cmdLine}' }; if($r.ReturnValue -eq 0){ Write-Output $r.ProcessId }`;
+      const out = execFileSync(
         'powershell.exe',
         ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-ExecutionPolicy', 'Bypass', '-Command', psCmd],
-        { detached: true, stdio: 'ignore', windowsHide: true }
-      );
-      child.unref();
-      return { spawned: true, method: 'wmi-breakaway' };
+        { windowsHide: true, timeout: 6000, encoding: 'utf8' }
+      ).trim();
+      const wmiPid = Number(out);
+      if (Number.isFinite(wmiPid) && wmiPid > 0) {
+        return { spawned: true, method: 'wmi-breakaway', pid: wmiPid };
+      }
+      return { spawned: false, method: 'wmi-breakaway', raw: out };
     }
     const child = spawn(process.execPath, [__filename, 'swap-wait'], {
       detached: true,
